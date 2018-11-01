@@ -155,8 +155,9 @@ func (c *Client) readExampleData(s net.Stream) {
 	for {
 		// fmt.Println("FOR LOOP STARTED")
 		// str, err := c.rw[c.host.ID()].ReadSlice('}')
-
 		str, err := c.rw[s].ReadSlice('}')
+
+		fmt.Printf("READING: %+v\n", s)
 
 		// fmt.Println("AFTER READSLICE")
 		if err != nil {
@@ -186,8 +187,9 @@ func (c *Client) writeExampleData(s net.Stream) {
 	stdReader := bufio.NewReader(os.Stdin)
 
 	for {
-		fmt.Print("> ")
+		fmt.Print("before> ")
 		data, err := stdReader.ReadString('\n')
+		fmt.Printf("WRITING: %+v\n", s)
 		// fmt.Println("AFTER READSTRING")
 		// fmt.Println("data: " + data)
 
