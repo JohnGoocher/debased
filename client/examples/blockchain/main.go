@@ -3,26 +3,23 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
+	//"fmt"
 	"log"
 	"strings"
 
 	// for creating a buffer for ouputting the blockchain
-	"bytes"
-
+	// "bytes"
+	"github.com/davecgh/go-spew/spew"
 	// for finding the type of an object for testing purposes
 	// "reflect"
-
 	// Example of reflect:
 	//   tst := "string"
-  //   tst2 := 10
-  //   tst3 := 1.2
+	//   tst2 := 10
+	//   tst3 := 1.2
 	//
-  //   fmt.Println(reflect.TypeOf(tst))
-  //   fmt.Println(reflect.TypeOf(tst2))
-  //   fmt.Println(reflect.TypeOf(tst3))
-
-
+	//   fmt.Println(reflect.TypeOf(tst))
+	//   fmt.Println(reflect.TypeOf(tst2))
+	//   fmt.Println(reflect.TypeOf(tst3))
 	// TODO: importing other files to work seamlessly below
 	// "github.com/"
 )
@@ -53,10 +50,9 @@ type Block struct {
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 
-
 // BlockChain is a slice of type *Block
 type BlockChain struct {
-	Blocks          []*Block
+	Blocks []*Block
 }
 
 // "addBlock" Adds a block to the front/head of the Blockchain
@@ -71,27 +67,38 @@ func (blockChain *BlockChain) getLastBlock() (*Block, error) {
 	return blockChain.Blocks[len(blockChain.Blocks)-1], nil
 }
 
-// TODO: ToString function:
-func (blockChain BlockChain) String() string{
-	// blockChain.Blocks is of type []*Block
 
-  var buffer bytes.Buffer
-
-buffer.WriteString("{\n")
-
-  for _, block := range blockChain.Blocks{
-		buffer.WriteString("[ ")
-		for _, transaction := range block.Transactions{
-			buffer.WriteString(transaction)
-			buffer.WriteString(", ")
-		}
-		buffer.WriteString(" ]\n")
-  }
-	
-	buffer.WriteString("}")
-  return buffer.String()
+// If the input slice(list) of blocks has a length that is greater
+// than the existent block chain, the existent block chain becomes
+// the new block chain.
+func (blockChain *BlockChain) replaceChain(newBlocks []*Block) {
+	if len(newBlocks) > len(blockChain.Blocks) {
+		blockChain.Blocks = newBlocks
+	}
 }
 
+
+// This is the toString method of a blockChain that will output the slice of
+// blocks
+// func (blockChain BlockChain) String() string {
+// 	// blockChain.Blocks is of type []*Block
+//
+// 	var buffer bytes.Buffer
+//
+// 	buffer.WriteString("{\n")
+//
+// 	for _, block := range blockChain.Blocks {
+// 		buffer.WriteString("[ ")
+// 		for _, transaction := range block.Transactions {
+// 			buffer.WriteString(transaction)
+// 			buffer.WriteString(", ")
+// 		}
+// 		buffer.WriteString("],\n")
+// 	}
+//
+// 	buffer.WriteString("}")
+// 	return buffer.String()
+// }
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -113,11 +120,11 @@ func calculateHash(b Block) string {
 
 // "createBlock" is a function which creates a new block. This function does
 // not add a block to the BlockChain - done by addBlock.
-func createBlock(oldBlock *Block, transactions []string) (*Block, error){
+func createBlock(oldBlock *Block, transactions []string) (*Block, error) {
 
 	newBlock := &Block{
-		Index:        oldBlock.Index + 1,
-		Transactions: transactions,
+		Index:         oldBlock.Index + 1,
+		Transactions:  transactions,
 		PrevPublicKey: oldBlock.PublicKey,
 	}
 
@@ -129,6 +136,7 @@ func createBlock(oldBlock *Block, transactions []string) (*Block, error){
 // Checks if the block that is created is valid to be placed on the blockChain
 // TODO: Ensure that all fields on the block given are instantiated in this function as well?
 func isBlockValid(newBlock, oldBlock Block) bool {
+
 	if newBlock.PrevPublicKey != oldBlock.PublicKey {
 		return false
 	}
@@ -167,7 +175,7 @@ func main() {
 	}
 
 	blockChain := &BlockChain{
-		Blocks:          []*Block{},
+		Blocks: []*Block{},
 	}
 
 	blockChain.addBlock(genesisBlock)
@@ -189,6 +197,6 @@ func main() {
 
 	blockChain.addBlock(newBlock)
 
-	// TODO: Create a toString method for outputting the blockchain for now.
-	fmt.Println("result is:\n", blockChain)
+	spew.Dump(blockChain)
+	//fmt.Println(blockChain)
 }
