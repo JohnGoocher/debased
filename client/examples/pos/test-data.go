@@ -9,12 +9,12 @@ func dummyDebasedMetaData() DebasedMetadata {
 				LiquidBalance:   1,
 				IlliquidBalance: 2,
 				Permissions: map[string]UserPermission{
-					"first": UserPermission{
+					"theOvertaker": UserPermission{
 						Roles: [8]bool{
 							false, false, true, true, false, true, false, true,
 						},
 					},
-					"photos": UserPermission{
+					"thePebble": UserPermission{
 						Roles: [8]bool{
 							false, false, true, true, false, true, false, true,
 						},
@@ -35,12 +35,12 @@ func dummyDebasedMetaData() DebasedMetadata {
 				LiquidBalance:   3,
 				IlliquidBalance: 4,
 				Permissions: map[string]UserPermission{
-					"first": UserPermission{
+					"cantSeeMe": UserPermission{
 						Roles: [8]bool{
 							false, false, true, true, false, true, false, true,
 						},
 					},
-					"photos": UserPermission{
+					"thePebble": UserPermission{
 						Roles: [8]bool{
 							false, false, true, true, false, true, false, true,
 						},
@@ -61,12 +61,12 @@ func dummyDebasedMetaData() DebasedMetadata {
 				LiquidBalance:   5,
 				IlliquidBalance: 6,
 				Permissions: map[string]UserPermission{
-					"first": UserPermission{
+					"cantSeeMe": UserPermission{
 						Roles: [8]bool{
 							false, false, true, true, false, true, false, true,
 						},
 					},
-					"photos": UserPermission{
+					"theOverTaker": UserPermission{
 						Roles: [8]bool{
 							false, false, true, true, false, true, false, true,
 						},
