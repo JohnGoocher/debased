@@ -379,6 +379,12 @@ func main() {
 			}
 		}
 
+		if args[0] == "tables" {
+			for _, table := range dummyMetadata.Tables {
+				fmt.Printf("%+v\n", table)
+			}
+		}
+
 		if args[0] == "addAccount" {
 			if _, ok := dummyMetadata.Accounts[args[1]]; !ok {
 				initialPermission := make(map[string]UserPermission)

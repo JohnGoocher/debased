@@ -251,6 +251,63 @@ func dummyDebasedMetaData() DebasedMetadata {
 					},
 				},
 			},
+			"champions": TableInfo{
+				Fields: []string{
+					"cantSeeMe",
+					"theOvertaker",
+					"TeddyChu",
+				},
+				Cells: [][]CellLocation{
+					[]CellLocation{
+						CellLocation{
+							BlockNumber:     big.NewInt(2),
+							Position:        big.NewInt(6),
+							PostionInRecord: big.NewInt(1000),
+						},
+						CellLocation{
+							BlockNumber:     big.NewInt(3),
+							Position:        big.NewInt(17),
+							PostionInRecord: big.NewInt(121),
+						},
+						CellLocation{
+							BlockNumber:     big.NewInt(91),
+							Position:        big.NewInt(13),
+							PostionInRecord: big.NewInt(29),
+						},
+					},
+					[]CellLocation{
+						CellLocation{
+							BlockNumber:     big.NewInt(4),
+							Position:        big.NewInt(7),
+							PostionInRecord: big.NewInt(23),
+						},
+						CellLocation{
+							BlockNumber:     big.NewInt(31),
+							Position:        big.NewInt(82),
+							PostionInRecord: big.NewInt(43),
+						},
+						CellLocation{
+							BlockNumber:     big.NewInt(12),
+							Position:        big.NewInt(6),
+							PostionInRecord: big.NewInt(9),
+						},
+					},
+				},
+				Writes: []RecordLocation{
+					RecordLocation{
+						BlockNumber: *big.NewInt(9),
+						Position:    *big.NewInt(21),
+					},
+					RecordLocation{
+						BlockNumber: *big.NewInt(12),
+						Position:    *big.NewInt(91),
+					},
+					RecordLocation{
+						BlockNumber: *big.NewInt(32),
+						Position:    *big.NewInt(56),
+					},
+				},
+			},
 		},
 	}
 

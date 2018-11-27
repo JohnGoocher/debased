@@ -4,3 +4,7 @@ AccessibleTables acctID
 tableAttributes tableID
 tableData tableID
 tableHistory tableID
+accounts
+tables
+addAccount acctID
+deleteAccount acctID
