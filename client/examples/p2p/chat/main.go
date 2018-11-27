@@ -56,9 +56,10 @@ type Client struct {
 	// rw map[peer.ID]*bufio.ReadWriter
 	rw map[net.Stream]*bufio.ReadWriter
 
-	// streams map[peer.ID]net.Stream
-	streams map[net.Stream]net.Stream
-	host    host.Host
+	// streams map[net.Stream]net.Stream
+	streams map[string]net.Stream
+
+	host host.Host
 }
 
 // type Node struct {
@@ -122,7 +123,15 @@ func (c *Client) handleStream(s net.Stream) {
 	// 	//do something here
 	// }
 
-	c.streams[s] = s
+	// fmt.Println(s)
+	// out, err := json.Marshal(s)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(string(out))
+
+	// c.streams[s] = s
+	c.streams[fmt.Sprintf("%+v", s)] = s
 
 	// =================================================
 	// =================================================
@@ -144,6 +153,8 @@ func (c *Client) handleStream(s net.Stream) {
 	go c.readExampleData(s)
 	go c.writeExampleData(s)
 
+	c.writeStreams(s)
+
 	// go readData(rw)
 	// go writeData(rw)
 
@@ -151,47 +162,62 @@ func (c *Client) handleStream(s net.Stream) {
 }
 
 func (c *Client) writeStreams(s net.Stream) {
+
 	sendData, err := json.Marshal(c.streams)
 	if err != nil {
 		fmt.Println("JSON.MARSHALL PANIC")
 		panic(err)
 	}
+
 	// fmt.Println("AFTER SEND DATA")
 	// fmt.Println("before write")
 	// fmt.Printf("sendData: %+v\n", string(sendData))
 	fmt.Println("STRRRRRREEEAMMMMSSSSSSS")
 	fmt.Printf("%+v\n", c.streams)
-	c.rw[s].Write(sendData)
+
+	// c.rw[s].Write(sendData)
+	// c.rw[s].Flush()
+
+	temp := fmt.Sprintf("%+v", c.streams)
+
+	fmt.Println("testing Sprintf")
+	fmt.Println(temp)
+
+	c.rw[s].Write([]byte(temp))
 	c.rw[s].Flush()
 }
 
-func (c *Client) readStreams(s net.Stream) {
-	str, err := c.rw[s].ReadSlice('}')
+// func (c *Client) readStreams(s net.Stream) {
+// 	// str, err := c.rw[s].ReadSlice('}')
+// 	var str []byte
+// 	err := json.NewDecoder(c.rw[s]).Decode(&str)
+// 	// str, err := c.rw[s].Dee('}')
+// 	fmt.Println("READING THAT STR")
+// 	fmt.Println(string(str))
+// 	fmt.Printf("READING: %+v\n", s)
+// 	fmt.Println("STTTTRRRREEEEAAAAAMMMMS")
+// 	fmt.Printf("%+v\n", c.streams)
 
-	fmt.Printf("READING: %+v\n", s)
-	fmt.Println("STTTTRRRREEEEAAAAAMMMMS")
-	fmt.Printf("%+v\n", c.streams)
-
-	// fmt.Println("AFTER READSLICE")
-	if err != nil {
-		// fmt.Println("READSLICE PANIC")
-		panic(err)
-	}
-	// fmt.Println("after readSlice")
-	fmt.Printf("readslice: %+v\n", string(str))
-	if len(str) > 0 {
-		if err := json.Unmarshal(str, &c.testMap); err != nil {
-			// fmt.Println("OR IS IT THIS PANIC")
-			panic(err)
-		}
-		fmt.Printf("%+v\n", c.testMap)
-		// fmt.Println("END OF ELSE")
-		// fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
-	} else {
-		fmt.Println("Receieved value is 0")
-		return
-	}
-}
+// 	// fmt.Println("AFTER READSLICE")
+// 	if err != nil {
+// 		// fmt.Println("READSLICE PANIC")
+// 		panic(err)
+// 	}
+// 	// fmt.Println("after readSlice")
+// 	fmt.Printf("readslice: %+v\n", string(str))
+// 	if len(str) > 0 {
+// 		if err := json.Unmarshal(str, &c.testMap); err != nil {
+// 			// fmt.Println("OR IS IT THIS PANIC")
+// 			panic(err)
+// 		}
+// 		fmt.Printf("%+v\n", c.testMap)
+// 		// fmt.Println("END OF ELSE")
+// 		// fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
+// 	} else {
+// 		fmt.Println("Receieved value is 0")
+// 		return
+// 	}
+// }
 
 func (c *Client) readExampleData(s net.Stream) {
 	// var testMap map[string]string
@@ -210,13 +236,28 @@ func (c *Client) readExampleData(s net.Stream) {
 			panic(err)
 		}
 		// fmt.Println("after readSlice")
+		// str = append(str, '"')
+		// str = append(str, '}')
 		fmt.Printf("readslice: %+v\n", string(str))
+		// str = append(str, '}')
+
+		var temp map[string]net.Stream
+
 		if len(str) > 0 {
-			if err := json.Unmarshal(str, &c.testMap); err != nil {
-				// fmt.Println("OR IS IT THIS PANIC")
+
+			// if err := json.Unmarshal(str, &c.streams); err != nil {
+			if err := json.Unmarshal(str, &temp); err != nil {
+				fmt.Println("json unmarshal c.streams error")
+				panic(err)
+			} else if err := json.Unmarshal(str, &c.testMap); err != nil {
+				fmt.Println("json unmarshal c.testMap error")
 				panic(err)
 			}
+
+			fmt.Println("c.testMap")
 			fmt.Printf("%+v\n", c.testMap)
+			fmt.Println("c.streams")
+			fmt.Printf("%+v\n", c.streams)
 			// fmt.Println("END OF ELSE")
 			// fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
 		} else {
@@ -354,7 +395,10 @@ func main() {
 	sampleClient.host = host
 	// sampleClient.streams = make(map[peer.ID]net.Stream)
 	// sampleClient.rw = make(map[peer.ID]*bufio.ReadWriter)
-	sampleClient.streams = make(map[net.Stream]net.Stream)
+
+	// sampleClient.streams = make(map[net.Stream]net.Stream)
+	sampleClient.streams = make(map[string]net.Stream)
+
 	sampleClient.rw = make(map[net.Stream]*bufio.ReadWriter)
 
 	fmt.Println("HOST.ID().PRETTY()")
