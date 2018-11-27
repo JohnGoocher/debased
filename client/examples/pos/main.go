@@ -10,7 +10,8 @@ import (
   "os"
 	"fmt"
 	"math/big"
-	"bytes"
+	//"bytes"
+	"strings"
 )
 
 // TODO: Table data and fields need to be encrypted during tableCreation and data entry
@@ -18,7 +19,7 @@ import (
 // Transfer : transaction used to move funds
 type Transfer struct {
 	ToAcctID      []byte
-	Ammount       float
+	Ammount       float64
 	fromAcctID    []byte
 }
 
@@ -44,8 +45,8 @@ type Write struct {
 
 // Cell : identifies the column and row af the conceptual table
 type Cell struct {
-	X                 *big.int
-	Y                 *big.int
+	X                 *big.Int
+	Y                 *big.Int
 }
 
 // Edit : transaction used to change the value of cells within a table
@@ -60,7 +61,7 @@ type Edit struct {
 // Delete : transaction used to delete rows from a table
 type Delete struct {
 	TableID           []byte
-	Rows              []*big.int
+	Rows              []*big.Int
   fromAcctID        []byte
 }
 
@@ -75,17 +76,17 @@ type ChangePermissions struct {
 // BlockGenerationBid : used to offer next block to network at a price
 //Future: Create system to track market cost for each transaction type
 type BlockGenerationBid struct {
-	BidPrice      float
-	Stake         float
-	BlockNumber   *big.int
-	EstGenTime    float
+	BidPrice      float64
+	Stake         float64
+	BlockNumber   *big.Int
+	EstGenTime    float64
   fromAcctID    []byte
 }
 
 // GeneratedBlock : used to send generated block from bid winner to network
 type GeneratedBlock struct {
 	// TODO: merge with blockchain and block type
-  CreatedBlock  bc.Block
+  //CreatedBlock  bc.Block
   // Future: Updated Metadata could be a delta of current Metadata
 	UpdatedMD     DebasedMetadata
 }
@@ -93,7 +94,7 @@ type GeneratedBlock struct {
 // Bet : used for staking during PoS
 //Future: bets can contain evidence if believe block is wrong
 type Bet struct {
-	Stake         float
+	Stake         float64
 	Position      bool
 	Confidence    int
 	Round         int
@@ -113,27 +114,27 @@ type UserPermission struct {
 
 // AccountInfo : stores account balance and permissions
 type AccountInfo struct {
-	LiquidBalance     float
+	LiquidBalance     float64
   //total amount currently staked
-	IlliquidBalance   float
+	IlliquidBalance   float64
 	//Permissions key:TableID value:Permission
 	Permissions       map[string]UserPermission
 }
 
 // RecordLocation : stores the block number and position of a transaction
 type RecordLocation struct {
-	BlockNumber       big.int
+	BlockNumber       big.Int
 	//position 0 is the first transaction in a block
-	Position          big.int
+	Position          big.Int
 }
 
 // CellLocation : used to map cells from a table to the blockchain
 type CellLocation struct {
-	BlockNumber       *big.int
+	BlockNumber       *big.Int
 	//position 0 is the first transaction in a block
-	Position          *big.int
+	Position          *big.Int
 	//byte position the cell begins at
-	PostionInRecord   *big.int
+	PostionInRecord   *big.Int
 }
 
 // TablePermission : stores all accounts with a given access level
@@ -188,8 +189,8 @@ type Transactions struct {
 //DebasedSystem : model for the nodes' entire view of the debased pos/blockchain system
 type DebasedSystem struct {
 	// TODO: Integrate with blockchain
-	CurrentBlockHeight    big.int
-	Blockchain            *bc.Blockchain
+	CurrentBlockHeight    big.Int
+	//Blockchain            *bc.Blockchain
 	Metadata              *DebasedMetadata
 	CurrentBids           []*BlockGenerationBid
 	UnconfirmedBlock      *GeneratedBlock
@@ -203,20 +204,22 @@ type DebasedSystem struct {
 }
 
 // GenerateBlock : creates a new block using the given DebasedSystem state
-func (debasedS *DebasedSystem) GenerateBlock() *GeneratedBlock {
+func (debasedS *DebasedSystem) GenerateBlock() {
 	newDebasedMD := debasedS.Metadata
-	newDebasedMD.CurrentBlockHeight++
+	debasedS.CurrentBlockHeight.Add(&debasedS.CurrentBlockHeight, big.NewInt(1))
 	// TODO: UPDATE currentRecordLocation whenever a transaction is added to the block
-	currentRecordLocation = RecordLocation{BlockNumber: newDebasedMD.CurrentBlockHeight, Position: 0}
+	currentRecordLocation := RecordLocation{BlockNumber: debasedS.CurrentBlockHeight, Position: *big.NewInt(0)}
 	// TODO: UPDATE currentRecordLocation whenever a transaction or is added to the block and intra-transaction when adding data
-	currentCellLocation = CellLocation{BlockNumber: 0, Position: 0, PostionInRecord: 0}
-	for i, transfer := range debasedS.PendingBetPayouts {
-    newDebasedMD.Accounts[string(transfer.fromAcctID[:])].IlliquidBalance -= transfer.Ammount
-    newDebasedMD.Accounts[string(transfer.ToAcctID[:])].IlliquidBalance -= transfer.Ammount
-  	newDebasedMD.Accounts[string(transfer.ToAcctID[:])].LiquidBalance += transfer.Ammount * 2
-	}
+	currentCellLocation := CellLocation{BlockNumber: big.NewInt(0), Position: big.NewInt(0), PostionInRecord: big.NewInt(0)}
+	//for i, transfer := range debasedS.PendingBetPayouts {
+		// TODO: THIS OMG THIS PLEASE THE SYSTEM NEEDS THIS AT SUCH A BASIC LEVEL
+    //newDebasedMD.Accounts[string(transfer.fromAcctID[:])].IlliquidBalance -= transfer.Ammount
+		//newDebasedMD.Accounts[string(transfer.ToAcctID[:])].IlliquidBalance -= transfer.Ammount
+  	//newDebasedMD.Accounts[string(transfer.ToAcctID[:])].LiquidBalance += transfer.Ammount * 2
+	//}
 	for _, transfer := range debasedS.PendingTransactions.Transfers {
-		newDebasedMD.Accounts[string(transfer.fromAcctID[:])].IlliquidBalance -= transfer.Ammount
+    //// TODO: THIS CANT ASSIGN TO STRUCT FIELD IN A MAP
+		//newDebasedMD.Accounts[string(transfer.fromAcctID[:])].IlliquidBalance -= transfer.Ammount
 		if acct, exist := newDebasedMD.Accounts[string(transfer.ToAcctID[:])]; exist {
       acct.LiquidBalance += transfer.Ammount
     } else {
@@ -224,7 +227,7 @@ func (debasedS *DebasedSystem) GenerateBlock() *GeneratedBlock {
 		}
 	}
 	for _, create := range debasedS.PendingTransactions.TableCreations {
-		create.Permission.Owner = fromAcctID
+		create.PermissionByTable.Owner = create.fromAcctID
     newDebasedMD.Tables[string(create.ID[:])] = TableInfo{CreationStub: currentRecordLocation,
 			                                         ID: create.ID,
 																							 Fields: create.Fields,
@@ -234,24 +237,26 @@ func (debasedS *DebasedSystem) GenerateBlock() *GeneratedBlock {
 																							 Edits: make([]RecordLocation, 0),
 																							 Deletions: make([]RecordLocation, 0),
 																							 DeadTable: false,
-																							 Permission : &(create.PermissionByTable),
+																							 Permission : *(create.PermissionByTable),
 		                                          }
 		for acctID, userPermish := range create.PermissionByAcct {
-        newDebasedMD.Accounts[acctID].Permissions[create.ID] = userPermish
+        newDebasedMD.Accounts[acctID].Permissions[string(create.ID[:])] = userPermish
     }
 	}
 	for _, add := range debasedS.PendingTransactions.Writes {
     //check is fromAcctID has write access to table
 		if newDebasedMD.Accounts[string(add.fromAcctID[:])].Permissions[string(add.TableID[:])].Roles[2] {
 			//TODO: add data to the blockchain
-      newDebasedMD.Tables[string(add.TableID[:])].Writes = append(newDebasedMD.Tables[string(add.TableID[:])].Writes, currentRecordLocation)
+			// TODO: THE MAPS HAVE BETRAYED ME
+      //newDebasedMD.Tables[string(add.TableID[:])].Writes = append(newDebasedMD.Tables[string(add.TableID[:])].Writes, currentRecordLocation)
 			for rowIndex, row := range add.Data {
-				for columnIndex, column := range row {
+				for columnIndex := range row {
 					newDebasedMD.Tables[string(add.TableID[:])].Cells[rowIndex][columnIndex] = currentCellLocation
 				}
 			}
 		}
 	}
+	// TODO: Edits, Deletes, PermissionChanges
 }
 
 //BIG TODOs
@@ -266,8 +271,9 @@ func (debasedS *DebasedSystem) GenerateBlock() *GeneratedBlock {
 
 
 //AccountNumber : determines account number from PublicKey
-func (publicKey ecdsa.PublicKey) AccountNumber() []byte {
-	return sha256.Sum256(append(publicKey.X.Bytes(),publicKey.Y.Bytes()...))[12:]
+func AccountNumber(publicKey ecdsa.PublicKey) []byte {
+	hash := sha256.Sum256(append(publicKey.X.Bytes(),publicKey.Y.Bytes()...))
+	return hash[12:]
 }
 
 //creates account that can be used on the debased network
@@ -276,7 +282,7 @@ func createAcct() (*ecdsa.PrivateKey, []byte) {
 	if err != nil {
 		panic(err)
 	}
-	return privateKey, &privateKey.PublicKey.AccountNumber()
+	return privateKey, AccountNumber(privateKey.PublicKey)
 }
 
 func main() {
@@ -303,7 +309,7 @@ func main() {
     line := scanner.Text()
 		//money has to be transfered to the new acct to notify the network of its creation
 		if line == "create account" {
-			privateKey, accountNumber, err := createAcct()
+			privateKey, accountNumber := createAcct()
 			//does NOT actually return error
 			if err != nil {
 				panic(err)
