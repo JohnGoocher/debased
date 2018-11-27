@@ -286,45 +286,94 @@ func createAcct() (*ecdsa.PrivateKey, []byte) {
 }
 
 func main() {
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-
-	msg := "hello, world"
-	hash := sha256.Sum256([]byte(msg))
-
-	r, s, err := ecdsa.Sign(rand.Reader, privateKey, hash[:])
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("signature: (0x%x, 0x%x)\n", r, s)
-
-	valid := ecdsa.Verify(&privateKey.PublicKey, hash[:], r, s)
-	fmt.Println("signature verified:", valid)
-
-
+	dummyMetadata := dummyDebasedMetaData()
 	scanner := bufio.NewScanner(os.Stdin)
   for scanner.Scan() {
     line := scanner.Text()
-		//money has to be transfered to the new acct to notify the network of its creation
-		if line == "create account" {
-			privateKey, accountNumber := createAcct()
-			//does NOT actually return error
-			if err != nil {
-				panic(err)
-			}
-			// TODO: Need to format both of these
-			fmt.Println(privateKey)
-			fmt.Println(accountNumber)
-		}
+
     if line == "exit" {
       os.Exit(0)
     }
     args := strings.Fields(line)
-		//transfer fromPrivKey toPubKey ammount
-		if args[0] == "transfer" {
-			// TODO: Create Transfer from CLI
+
+		if args[0] == "checkBalance" {
+			if val, ok := dummyMetadata.Accounts[args[1]]; ok {
+				balance := val.IlliquidBalance + val.LiquidBalance
+        fmt.Println("Account balance:", balance)
+      } else {
+				fmt.Println("Account not found")
+			}
+		}
+		if args[0] == "checkRoles" {
+			if _, ok := dummyMetadata.Accounts[args[1]]; !ok {
+        fmt.Println("Account not found")
+      } else {
+			  allRoles := []string{"Owner",	"Admin", "WriteData",	"EditData" , "DeleteData",	"DeleteTable", "ReadHistory",	"ReadData"}
+			  currentMsg := ""
+	  		for k, v := range dummyMetadata.Accounts[args[1]].Permissions {
+          currentMsg = "TableID: " + k + "\n" + "Roles: "
+			  	for index, role := range allRoles {
+				  	if v.Roles[index] {
+					  	currentMsg = currentMsg + role + ", "
+					  }
+				  }
+				  fmt.Println(currentMsg)
+        }
+		  }
+		}
+		if args[0] == "tableAttributes" {
+			if _, ok := dummyMetadata.Tables[args[1]]; !ok {
+        fmt.Println("Table not found")
+      } else {
+			  currentMsg := "["
+			  for _, v := range dummyMetadata.Tables[args[1]].Fields {
+          currentMsg = currentMsg + v + ", "
+        }
+			  currentMsg = currentMsg + "]"
+			  fmt.Println(currentMsg)
+		  }
+		}
+		if args[0] == "tableData" {
+			if _, ok := dummyMetadata.Tables[args[1]]; !ok {
+        fmt.Println("Table not found")
+      } else {
+  			for _, row := range dummyMetadata.Tables[args[1]].Cells {
+	  			fmt.Print("[")
+          for _, column := range row {
+			  		fmt.Print("(BN: ", column.BlockNumber.String())
+				  	fmt.Print(", POS: ", column.Position.String())
+				  	fmt.Print(", PIR: ", column.PostionInRecord.String(), "), ")
+				  }
+				  fmt.Println("]")
+        }
+		  }
+		}
+		if args[0] == "AccessibleTables" {
+			if _, ok := dummyMetadata.Accounts[args[1]]; !ok {
+        fmt.Println("Account not found")
+      } else {
+  			fmt.Println("TableIDs: ")
+	  		for k := range dummyMetadata.Accounts[args[1]].Permissions {
+		  		fmt.Print(k, ", ")
+        }
+		  	fmt.Println()
+		  }
+		}
+		if args[0] == "tableHistory" {
+			if _, ok := dummyMetadata.Tables[args[1]]; !ok {
+        fmt.Println("Table not found")
+      } else {
+  			fmt.Print("[")
+	  		for _, write := range dummyMetadata.Tables[args[1]].Writes {
+				  fmt.Print("(BN: ", write.BlockNumber.String())
+					fmt.Print(", POS: ", write.Position.String(), "), ")
+        }
+				fmt.Println("]")
+		  }
+		}
+
+		if args[0] == "never" {
+			fmt.Println(dummyMetadata)
 		}
   }
   if err := scanner.Err(); err != nil {
