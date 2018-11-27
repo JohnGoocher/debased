@@ -150,6 +150,49 @@ func (c *Client) handleStream(s net.Stream) {
 	// stream 's' will stay open until you close it (or the other side closes it).
 }
 
+func (c *Client) writeStreams(s net.Stream) {
+	sendData, err := json.Marshal(c.streams)
+	if err != nil {
+		fmt.Println("JSON.MARSHALL PANIC")
+		panic(err)
+	}
+	// fmt.Println("AFTER SEND DATA")
+	// fmt.Println("before write")
+	// fmt.Printf("sendData: %+v\n", string(sendData))
+	fmt.Println("STRRRRRREEEAMMMMSSSSSSS")
+	fmt.Printf("%+v\n", c.streams)
+	c.rw[s].Write(sendData)
+	c.rw[s].Flush()
+}
+
+func (c *Client) readStreams(s net.Stream) {
+	str, err := c.rw[s].ReadSlice('}')
+
+	fmt.Printf("READING: %+v\n", s)
+	fmt.Println("STTTTRRRREEEEAAAAAMMMMS")
+	fmt.Printf("%+v\n", c.streams)
+
+	// fmt.Println("AFTER READSLICE")
+	if err != nil {
+		// fmt.Println("READSLICE PANIC")
+		panic(err)
+	}
+	// fmt.Println("after readSlice")
+	fmt.Printf("readslice: %+v\n", string(str))
+	if len(str) > 0 {
+		if err := json.Unmarshal(str, &c.testMap); err != nil {
+			// fmt.Println("OR IS IT THIS PANIC")
+			panic(err)
+		}
+		fmt.Printf("%+v\n", c.testMap)
+		// fmt.Println("END OF ELSE")
+		// fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
+	} else {
+		fmt.Println("Receieved value is 0")
+		return
+	}
+}
+
 func (c *Client) readExampleData(s net.Stream) {
 	// var testMap map[string]string
 	for {
@@ -158,6 +201,8 @@ func (c *Client) readExampleData(s net.Stream) {
 		str, err := c.rw[s].ReadSlice('}')
 
 		fmt.Printf("READING: %+v\n", s)
+		fmt.Println("STTTTRRRREEEEAAAAAMMMMS")
+		fmt.Printf("%+v\n", c.streams)
 
 		// fmt.Println("AFTER READSLICE")
 		if err != nil {
@@ -185,8 +230,9 @@ func (c *Client) readExampleData(s net.Stream) {
 func (c *Client) writeExampleData(s net.Stream) {
 	// testMap := make(map[string]string)
 	stdReader := bufio.NewReader(os.Stdin)
-
+	count := 0
 	for {
+		fmt.Println("count: %i", count)
 		fmt.Print("before> ")
 		data, err := stdReader.ReadString('\n')
 		fmt.Printf("WRITING: %+v\n", s)
@@ -207,8 +253,20 @@ func (c *Client) writeExampleData(s net.Stream) {
 		// fmt.Println("AFTER SEND DATA")
 		// fmt.Println("before write")
 		// fmt.Printf("sendData: %+v\n", string(sendData))
-		c.rw[s].Write(sendData)
-		c.rw[s].Flush()
+		fmt.Println("STRRRRRREEEAMMMMSSSSSSS")
+		fmt.Printf("%+v\n", c.streams)
+
+		for _, writer := range c.rw {
+			writer.Write(sendData)
+			writer.Flush()
+		}
+
+		// old way
+		// c.rw[s].Write(sendData)
+		// c.rw[s].Flush()
+		// old way
+
+		count++
 	}
 }
 
@@ -353,6 +411,9 @@ func main() {
 			log.Fatalln(err)
 		}
 
+		host.SetStreamHandler("/chat/1.0.0", sampleClient.handleStream)
+		fmt.Printf("Run './chat-exec -d /ip4/127.0.0.1/tcp//p2p/%s' on another console.\n", host.ID().Pretty())
+
 		// Add the destination's peer multiaddress in the peerstore.
 		// This will be used during connection and stream creation by libp2p.
 		host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
@@ -379,6 +440,9 @@ func main() {
 
 		go sampleClient.readExampleData(s)
 		go sampleClient.writeExampleData(s)
+
+		fmt.Println("LET'S CHECK OUT THOSE STREAMS")
+		fmt.Println("%+v\n", sampleClient.streams)
 
 		// Create a thread to read and write data.
 		// go writeData(rw)
