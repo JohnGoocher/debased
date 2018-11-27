@@ -10,6 +10,7 @@ import (
   "os"
 	"fmt"
 	"math/big"
+	"bytes"
 )
 
 // TODO: Table data and fields need to be encrypted during tableCreation and data entry
@@ -158,10 +159,10 @@ type TableInfo struct {
 	Types             []string
 	//position 0 is the oldest
 	//               row column
-	Cells             [][]*CellLocation
-	Writes            []*RecordLocation
-	Edits             []*RecordLocation
-	Deletions         []*RecordLocation
+	Cells             [][]CellLocation
+	Writes            []RecordLocation
+	Edits             []RecordLocation
+	Deletions         []RecordLocation
 	DeadTable         bool
 	Permission        TablePermission
 }
@@ -202,35 +203,36 @@ type DebasedSystem struct {
 }
 
 // GenerateBlock : creates a new block using the given DebasedSystem state
-func (debasedS DebasedSystem) GenerateBlock() *GeneratedBlock {
+func (debasedS *DebasedSystem) GenerateBlock() *GeneratedBlock {
 	newDebasedMD := debasedS.Metadata
 	newDebasedMD.CurrentBlockHeight++
 	// TODO: UPDATE currentRecordLocation whenever a transaction is added to the block
 	currentRecordLocation = RecordLocation{BlockNumber: newDebasedMD.CurrentBlockHeight, Position: 0}
-	for _, transfer := range debasedS.PendingBetPayouts {
+	// TODO: UPDATE currentRecordLocation whenever a transaction or is added to the block and intra-transaction when adding data
+	currentCellLocation = CellLocation{BlockNumber: 0, Position: 0, PostionInRecord: 0}
+	for i, transfer := range debasedS.PendingBetPayouts {
     newDebasedMD.Accounts[string(transfer.fromAcctID[:])].IlliquidBalance -= transfer.Ammount
     newDebasedMD.Accounts[string(transfer.ToAcctID[:])].IlliquidBalance -= transfer.Ammount
   	newDebasedMD.Accounts[string(transfer.ToAcctID[:])].LiquidBalance += transfer.Ammount * 2
 	}
 	for _, transfer := range debasedS.PendingTransactions.Transfers {
 		newDebasedMD.Accounts[string(transfer.fromAcctID[:])].IlliquidBalance -= transfer.Ammount
-		//HANDLE IF KEY NOT IN map
-		if val, ok := newDebasedMD.Accounts[string(transfer.ToAcctID[:])]; ok {
-      val.LiquidBalance += transfer.Ammount
+		if acct, exist := newDebasedMD.Accounts[string(transfer.ToAcctID[:])]; exist {
+      acct.LiquidBalance += transfer.Ammount
     } else {
 			newDebasedMD.Accounts[string(transfer.ToAcctID[:])] = AccountInfo{0, transfer.Ammount, make(map[string]UserPermission)}
 		}
 	}
 	for _, create := range debasedS.PendingTransactions.TableCreations {
 		create.Permission.Owner = fromAcctID
-    newDebasedMD.Tables[create.ID] = TableInfo{CreationStub: currentRecordLocation,
+    newDebasedMD.Tables[string(create.ID[:])] = TableInfo{CreationStub: currentRecordLocation,
 			                                         ID: create.ID,
 																							 Fields: create.Fields,
                                                Types: create.Types,
-																							 Cells: make([][]*CellLocation, 0),
-																							 Writes: make([]*RecordLocation, 0),
-																							 Edits: make([]*RecordLocation, 0),
-																							 Deletions: make([]*RecordLocation, 0),
+																							 Cells: make([][]CellLocation, 0),
+																							 Writes: make([]RecordLocation, 0),
+																							 Edits: make([]RecordLocation, 0),
+																							 Deletions: make([]RecordLocation, 0),
 																							 DeadTable: false,
 																							 Permission : &(create.PermissionByTable),
 		                                          }
@@ -240,7 +242,15 @@ func (debasedS DebasedSystem) GenerateBlock() *GeneratedBlock {
 	}
 	for _, add := range debasedS.PendingTransactions.Writes {
     //check is fromAcctID has write access to table
-
+		if newDebasedMD.Accounts[string(add.fromAcctID[:])].Permissions[string(add.TableID[:])].Roles[2] {
+			//TODO: add data to the blockchain
+      newDebasedMD.Tables[string(add.TableID[:])].Writes = append(newDebasedMD.Tables[string(add.TableID[:])].Writes, currentRecordLocation)
+			for rowIndex, row := range add.Data {
+				for columnIndex, column := range row {
+					newDebasedMD.Tables[string(add.TableID[:])].Cells[rowIndex][columnIndex] = currentCellLocation
+				}
+			}
+		}
 	}
 }
 
