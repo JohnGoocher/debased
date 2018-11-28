@@ -308,6 +308,29 @@ func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
 	return GeneratedBlock{newBlockHeight, newDebasedMD}
 }
 
+// JSONWrapper : used to sign and verify obj sent overnetwork
+type JSONWrapper struct {
+	PK        *ecdsa.PublicKey
+	R         *big.Int
+	S         *big.Int
+	Type      string
+	//JSON of the encolesed struct
+	Contents  []byte
+}
+
+// Sign : assgins PK, R, S to JSONWrapper
+func (wrapper JSONWrapper) Sign(privateKey *ecdsa.PrivateKey) error{
+	var err error
+	wrapper.R, wrapper.S, err = ecdsa.Sign(rand.Reader, privateKey, append([]byte(wrapper.Type), wrapper.Contents...))
+	wrapper.PK = &privateKey.PublicKey
+	return err
+}
+
+// VerifySignature : verifies the signature in JSONWrapper
+func (wrapper JSONWrapper) VerifySignature() bool {
+	return ecdsa.Verify(wrapper.PK, append([]byte(wrapper.Type), wrapper.Contents...), wrapper.R, wrapper.S)
+}
+
 //BIG TESTs
 // Be able to generate a block and update metadata
 
