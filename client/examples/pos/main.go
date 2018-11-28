@@ -9,19 +9,21 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"math/big"
-	"os"
-
+	"reflect"
+	"strconv"
 	//"bytes"
+	"os"
 	"strings"
+	"encoding/json"
 )
 
 // TODO: Table data and fields need to be encrypted during tableCreation and data entry
 
 // Transfer : transaction used to move funds
 type Transfer struct {
-	ToAcctID   []byte
-	Ammount    float64
-	fromAcctID []byte
+	ToAcctID      []byte
+	Ammount       float64
+	FromAcctID    []byte
 }
 
 // TableCreation : transaction used to create a new table
@@ -32,16 +34,17 @@ type TableCreation struct {
 	//special check, owner in permission must == AcctID of publicKey used by signer
 	PermissionByTable *TablePermission
 	//                      AcctID : UserPermission
-	PermissionByAcct map[string]UserPermission
-	fromAcctID       []byte
+  PermissionByAcct    map[string]UserPermission
+	FromAcctID          []byte
 }
 
 // Write : transaction used to write data to a table
 type Write struct {
-	TableID []byte
-	//               row column data
-	Data       [][][]byte
-	fromAcctID []byte
+	TableID           []byte
+	Cells             []*Cell
+	//                [cell1Data, cell2Data, ...]
+	Data              [][]byte
+	FromAcctID        []byte
 }
 
 // Cell : identifies the column and row af the conceptual table
@@ -55,52 +58,60 @@ type Edit struct {
 	TableID []byte
 	Cells   []*Cell
 	//                [cell1Data, cell2Data, ...]
-	NewDataByCell [][]byte
-	fromAcctID    []byte
+	NewDataByCell     [][]byte
+  FromAcctID        []byte
+}
+
+// DeletionStub : holds onto data edited over
+type DeletionStub struct {
+	TableID           []byte
+	Cells             []RetiredCellInfo
 }
 
 // Delete : transaction used to delete rows from a table
 type Delete struct {
-	TableID    []byte
-	Rows       []*big.Int
-	fromAcctID []byte
+	TableID           []byte
+	Cells             []*Cell
+  FromAcctID        []byte
 }
 
 // ChangePermissions : transaction that grants an account permissions for a table
 type ChangePermissions struct {
-	TableID           []byte
-	PermissionByTable *TablePermission
-	PermissionByAcct  map[string]UserPermission
-	fromAcctID        []byte
+	TableID             []byte
+	PermissionByTable   *TablePermission
+	//                  acctID : UserPermission
+  PermissionByAcct    map[string]UserPermission
+  FromAcctID          []byte
 }
 
 // BlockGenerationBid : used to offer next block to network at a price
 //Future: Create system to track market cost for each transaction type
 type BlockGenerationBid struct {
-	BidPrice    float64
-	Stake       float64
-	BlockNumber *big.Int
-	EstGenTime  float64
-	fromAcctID  []byte
+	BidPrice      float64
+	Stake         float64
+	BlockNumber   *big.Int
+	EstGenTime    float64
+  FromAcctID    []byte
 }
 
 // GeneratedBlock : used to send generated block from bid winner to network
 type GeneratedBlock struct {
+	BlockHeight   big.Int
 	// TODO: merge with blockchain and block type
-	//CreatedBlock  bc.Block
-	// Future: Updated Metadata could be a delta of current Metadata
-	UpdatedMD DebasedMetadata
+  //CreatedBlock  bc.Block
+  // Future: Updated Metadata could be a delta of current Metadata
+	UpdatedMD     *DebasedMetadata
 }
 
 // Bet : used for staking during PoS
 //Future: bets can contain evidence if believe block is wrong
 type Bet struct {
-	Stake      float64
-	Position   bool
-	Confidence int
-	Round      int
-	BlockHash  []byte
-	fromAcctID []byte
+	Stake         float64
+	Position      bool
+	Confidence    int
+	Round         int
+	BlockHash     []byte
+	FromAcctID    []byte
 }
 
 // UserPermission : stores a user's access to a given table
@@ -127,6 +138,12 @@ type RecordLocation struct {
 	BlockNumber big.Int
 	//position 0 is the first transaction in a block
 	Position big.Int
+}
+
+// RetiredCellInfo : used to store location of delete data
+type RetiredCellInfo struct {
+	Cell2DCord        Cell
+	Location          CellLocation
 }
 
 // CellLocation : used to map cells from a table to the blockchain
@@ -161,12 +178,12 @@ type TableInfo struct {
 	Types        []string
 	//position 0 is the oldest
 	//               row column
-	Cells      [][]CellLocation
-	Writes     []RecordLocation
-	Edits      []RecordLocation
-	Deletions  []RecordLocation
-	DeadTable  bool
-	Permission TablePermission
+	Cells             [][]CellLocation
+	Writes            []RecordLocation
+	Edits             []DeletionStub
+	Deletions         []DeletionStub
+	DeadTable         bool
+	Permission        TablePermission
 }
 
 // DebasedMetadata : stores account balance, permissions, and table info
@@ -189,86 +206,182 @@ type Transactions struct {
 
 //DebasedSystem : model for the nodes' entire view of the debased pos/blockchain system
 type DebasedSystem struct {
+	PrivateKeysFromSession  []*ecdsa.PrivateKey
 	// TODO: Integrate with blockchain
-	CurrentBlockHeight big.Int
+	CurrentBlockHeight      big.Int
+	DuringConsensus         bool
 	//Blockchain            *bc.Blockchain
-	Metadata            *DebasedMetadata
-	CurrentBids         []*BlockGenerationBid
-	UnconfirmedBlock    *GeneratedBlock
-	CurrentBets         []*Bet
-	PendingBetPayouts   []*Transfer
-	PendingTransactions *Transactions
-	// Future: voting order and complicated payouts
-	// Future: confidence system for inter-node relations
-	// TODO: track accounts/nodes with skin in the game, how much, and where
-	// avoid stuck transactions by allowing killing
+	Metadata                *DebasedMetadata
+	CurrentBids             []*BlockGenerationBid
+	UnconfirmedBlock        *GeneratedBlock
+  CurrentBets             []*Bet
+	PendingBetPayouts       []*Transfer
+	PendingTransactions     *Transactions
+	HoldingPenTransactions  *Transactions
 }
 
 // GenerateBlock : creates a new block using the given DebasedSystem state
-func (debasedS *DebasedSystem) GenerateBlock() {
+func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
 	newDebasedMD := debasedS.Metadata
-	debasedS.CurrentBlockHeight.Add(&debasedS.CurrentBlockHeight, big.NewInt(1))
+	var newBlockHeight big.Int
+	newBlockHeight.Add(&debasedS.CurrentBlockHeight, big.NewInt(1))
+	// Not needed pending new interface to Blockchain
 	// TODO: UPDATE currentRecordLocation whenever a transaction is added to the block
-	currentRecordLocation := RecordLocation{BlockNumber: debasedS.CurrentBlockHeight, Position: *big.NewInt(0)}
+	currentRecordLocation := RecordLocation{BlockNumber: newBlockHeight, Position: *big.NewInt(0)}
+	// Not needed pending new interface to Blockchain/
 	// TODO: UPDATE currentRecordLocation whenever a transaction or is added to the block and intra-transaction when adding data
 	currentCellLocation := CellLocation{BlockNumber: big.NewInt(0), Position: big.NewInt(0), PostionInRecord: big.NewInt(0)}
-	//for i, transfer := range debasedS.PendingBetPayouts {
-	// TODO: THIS OMG THIS PLEASE THE SYSTEM NEEDS THIS AT SUCH A BASIC LEVEL
-	//newDebasedMD.Accounts[string(transfer.fromAcctID[:])].IlliquidBalance -= transfer.Ammount
-	//newDebasedMD.Accounts[string(transfer.ToAcctID[:])].IlliquidBalance -= transfer.Ammount
-	//newDebasedMD.Accounts[string(transfer.ToAcctID[:])].LiquidBalance += transfer.Ammount * 2
-	//}
+	for _, transfer := range debasedS.PendingBetPayouts {
+    var x = newDebasedMD.Accounts[string(transfer.FromAcctID[:])]
+		x.IlliquidBalance -= transfer.Ammount
+		newDebasedMD.Accounts[string(transfer.FromAcctID[:])] = x
+		x = newDebasedMD.Accounts[string(transfer.ToAcctID[:])]
+		x.IlliquidBalance -= transfer.Ammount
+		x.LiquidBalance += transfer.Ammount * 2
+  	newDebasedMD.Accounts[string(transfer.ToAcctID[:])] = x
+	}
 	for _, transfer := range debasedS.PendingTransactions.Transfers {
-		//// TODO: THIS CANT ASSIGN TO STRUCT FIELD IN A MAP
-		//newDebasedMD.Accounts[string(transfer.fromAcctID[:])].IlliquidBalance -= transfer.Ammount
+		var x = newDebasedMD.Accounts[string(transfer.FromAcctID[:])]
+		x.IlliquidBalance -= transfer.Ammount
+		newDebasedMD.Accounts[string(transfer.FromAcctID[:])] = x
 		if acct, exist := newDebasedMD.Accounts[string(transfer.ToAcctID[:])]; exist {
-			acct.LiquidBalance += transfer.Ammount
-		} else {
-			newDebasedMD.Accounts[string(transfer.ToAcctID[:])] = AccountInfo{0, transfer.Ammount, make(map[string]UserPermission)}
+      acct.LiquidBalance += transfer.Ammount
+    } else {
+			newDebasedMD.Accounts[string(transfer.ToAcctID[:])] = AccountInfo{transfer.Ammount, 0, make(map[string]UserPermission)}
 		}
 	}
 	for _, create := range debasedS.PendingTransactions.TableCreations {
-		create.PermissionByTable.Owner = create.fromAcctID
-		newDebasedMD.Tables[string(create.ID[:])] = TableInfo{CreationStub: currentRecordLocation,
-			ID:         create.ID,
-			Fields:     create.Fields,
-			Types:      create.Types,
-			Cells:      make([][]CellLocation, 0),
-			Writes:     make([]RecordLocation, 0),
-			Edits:      make([]RecordLocation, 0),
-			Deletions:  make([]RecordLocation, 0),
-			DeadTable:  false,
-			Permission: *(create.PermissionByTable),
-		}
+		create.PermissionByTable.Owner = create.FromAcctID
+    newDebasedMD.Tables[string(create.ID[:])] = TableInfo{CreationStub: currentRecordLocation,
+			                                         ID: create.ID,
+																							 Fields: create.Fields,
+                                               Types: create.Types,
+																							 Cells: make([][]CellLocation, 0),
+																							 Writes: make([]RecordLocation, 0),
+																							 Edits: make([]DeletionStub, 0),
+																							 Deletions: make([]DeletionStub, 0),
+																							 DeadTable: false,
+																							 Permission : *(create.PermissionByTable),
+		                                          }
 		for acctID, userPermish := range create.PermissionByAcct {
 			newDebasedMD.Accounts[acctID].Permissions[string(create.ID[:])] = userPermish
 		}
 	}
 	for _, add := range debasedS.PendingTransactions.Writes {
-		//check is fromAcctID has write access to table
-		if newDebasedMD.Accounts[string(add.fromAcctID[:])].Permissions[string(add.TableID[:])].Roles[2] {
-			//TODO: add data to the blockchain
-			// TODO: THE MAPS HAVE BETRAYED ME
-			//newDebasedMD.Tables[string(add.TableID[:])].Writes = append(newDebasedMD.Tables[string(add.TableID[:])].Writes, currentRecordLocation)
-			for rowIndex, row := range add.Data {
-				for columnIndex := range row {
-					newDebasedMD.Tables[string(add.TableID[:])].Cells[rowIndex][columnIndex] = currentCellLocation
-				}
+    //check is FromAcctID has write access to table
+		if newDebasedMD.Accounts[string(add.FromAcctID[:])].Permissions[string(add.TableID[:])].Roles[2] {
+			// TODO: add data to the blockchain
+			var x = newDebasedMD.Tables[string(add.TableID[:])]
+      x.Writes = append(newDebasedMD.Tables[string(add.TableID[:])].Writes, currentRecordLocation)
+			newDebasedMD.Tables[string(add.TableID[:])] = x
+			for _, eachCell := range add.Cells {
+				newDebasedMD.Tables[string(add.TableID[:])].Cells[eachCell.Y.Uint64()][eachCell.X.Uint64()] = currentCellLocation
 			}
 		}
 	}
-	// TODO: Edits, Deletes, PermissionChanges
+	for _, editRequest := range debasedS.PendingTransactions.Edits {
+    //check is FromAcctID has edit access to table
+		if newDebasedMD.Accounts[string(editRequest.FromAcctID[:])].Permissions[string(editRequest.TableID[:])].Roles[3] {
+			var deletionRecord DeletionStub
+			deletionRecord.TableID = editRequest.TableID
+      for _, cell := range editRequest.Cells {
+				deletionRecord.Cells = append(deletionRecord.Cells, RetiredCellInfo{Cell{cell.X, cell.Y}, newDebasedMD.Tables[string(editRequest.TableID[:])].Cells[cell.X.Uint64()][cell.Y.Uint64()]})
+			}
+			var x = newDebasedMD.Tables[string(editRequest.TableID[:])]
+			x.Edits = append(newDebasedMD.Tables[string(editRequest.TableID[:])].Edits, deletionRecord)
+			newDebasedMD.Tables[string(editRequest.TableID[:])] = x
+			// TODO: add data to the blockchain
+			for _, eachCell := range editRequest.Cells {
+				newDebasedMD.Tables[string(editRequest.TableID[:])].Cells[eachCell.Y.Uint64()][eachCell.X.Uint64()] = currentCellLocation
+			}
+		}
+	}
+	for _, deltionRequest := range debasedS.PendingTransactions.Deletes {
+		if newDebasedMD.Accounts[string(deltionRequest.FromAcctID[:])].Permissions[string(deltionRequest.TableID[:])].Roles[4] {
+			var deletionRecord DeletionStub
+			deletionRecord.TableID = deltionRequest.TableID
+      for _, cell := range deltionRequest.Cells {
+				deletionRecord.Cells = append(deletionRecord.Cells, RetiredCellInfo{Cell{cell.X, cell.Y}, newDebasedMD.Tables[string(deltionRequest.TableID[:])].Cells[cell.X.Uint64()][cell.Y.Uint64()]})
+			}
+			var x = newDebasedMD.Tables[string(deltionRequest.TableID[:])]
+			x.Edits = append(newDebasedMD.Tables[string(deltionRequest.TableID[:])].Edits, deletionRecord)
+			newDebasedMD.Tables[string(deltionRequest.TableID[:])] = x
+			for _, eachCell := range deltionRequest.Cells {
+				newDebasedMD.Tables[string(deltionRequest.TableID[:])].Cells[eachCell.Y.Uint64()][eachCell.X.Uint64()] = CellLocation{}
+			}
+		}
+	}
+	return GeneratedBlock{newBlockHeight, newDebasedMD}
 }
+
+//CheckUnconfirmedBlock : used to verify a GeneratedBlock received from the network
+func (debasedS *DebasedSystem) CheckUnconfirmedBlock() bool {
+	var nextBlockHeight big.Int
+	nextBlockHeight.Add(&debasedS.CurrentBlockHeight, big.NewInt(1))
+	if debasedS.UnconfirmedBlock.BlockHeight.Uint64() != nextBlockHeight.Uint64() {
+		return false
+	}
+  return reflect.DeepEqual(debasedS.UnconfirmedBlock, debasedS.GenerateBlock)
+}
+
+// JSONWrapper : used to sign and verify obj sent overnetwork
+type JSONWrapper struct {
+	PK        *ecdsa.PublicKey
+	R         *big.Int
+	S         *big.Int
+	Type      string
+	//JSON of the encolesed struct
+	Contents  []byte
+}
+
+// Sign : assgins PK, R, S to JSONWrapper
+func (wrapper JSONWrapper) Sign(privateKey *ecdsa.PrivateKey) error{
+	var err error
+	wrapper.R, wrapper.S, err = ecdsa.Sign(rand.Reader, privateKey, append([]byte(wrapper.Type), wrapper.Contents...))
+	wrapper.PK = &privateKey.PublicKey
+	return err
+}
+
+// VerifySignature : verifies the signature in JSONWrapper
+func (wrapper JSONWrapper) VerifySignature() bool {
+	return ecdsa.Verify(wrapper.PK, append([]byte(wrapper.Type), wrapper.Contents...), wrapper.R, wrapper.S)
+}
+
+//NOW TODOs
+// TODO: MAKE consensus occur on a timer
+//       A node creates a block a sends it to the network
+//       Each node then checks the block
+//       The nodes each place their votes
+//       After X time from the strat of the process, the voting is closed
+//       IF approved:
+//                    determine payouts and clear CurrentBets
+//										each node updates their MD and BC
+//                    each node flushes PendingTransactions and PendingBetPayouts
+//                    and move holding bay transactions into pending
+//       IF not repeat
+//                    determine payouts and clear CurrentBets
+//										repeat process
+
+//BIG TESTs
+// Be able to generate a block and update metadata
 
 //BIG TODOs
 // TODO: Be able to convert between struct <----> JSON
 // TODO: Be able to check if a transaction conforms to debased rules
 // TODO: Be able to choose a node to gen next block
-// TODO: Be able to generate a block and update metadata
 // TODO: Be able to check the correctness of a newly generate block and metadata
 // TODO: Be able to bet
 // TODO: Be able to recognize consensus
 // TODO: Be able to payout accounts with correct votes (part of block generation)
+
+//BIG FUTUREs (WSB STYLE)
+// Future: have decearnment on which transactions to include vs exclude in newly generated blocks
+// Future: avoid dead transactions by allowing killing
+// Future: voting order and complicated payouts
+// Future: confidence system for inter-node relations
+// Future: track accounts/nodes with skin in the game, how much, and where
+// Future: table deletion
+// Future: PermissionChanges
 
 //AccountNumber : determines account number from PublicKey
 func AccountNumber(publicKey ecdsa.PublicKey) []byte {
@@ -286,6 +399,18 @@ func createAcct() (*ecdsa.PrivateKey, []byte) {
 }
 
 func main() {
+	nodeDebasedSystem := DebasedSystem{PrivateKeysFromSession: make([]*ecdsa.PrivateKey, 0),
+		                                 CurrentBlockHeight: *big.NewInt(0),
+																		 DuringConsensus: false,
+																		 Metadata: &DebasedMetadata{Accounts: make(map[string]AccountInfo), Tables: make(map[string]TableInfo)},
+																		 CurrentBids: make([]*BlockGenerationBid, 0),
+																		 UnconfirmedBlock: nil,
+																		 CurrentBets: make([]*Bet, 0),
+																		 PendingBetPayouts: make([]*Transfer, 0),
+																		 PendingTransactions: &Transactions{},
+																		 HoldingPenTransactions: &Transactions{},
+	                                   }
+
 	dummyMetadata := dummyDebasedMetaData()
 	fmt.Printf("> ")
 	scanner := bufio.NewScanner(os.Stdin)
@@ -422,6 +547,42 @@ func main() {
 			} else {
 				fmt.Println("Account does not exist")
 			}
+		}
+		if args[0] == "createAcct" {
+      privateKey, acctID := createAcct()
+			nodeDebasedSystem.PrivateKeysFromSession = append(nodeDebasedSystem.PrivateKeysFromSession, privateKey)
+			fmt.Println(privateKey)
+			fmt.Println(acctID)
+		}
+		// transfer ToAcct Amount FromAcctPrivateKeyIndex
+		if args[0] == "transfer" {
+			var ammount float64
+			var err error
+			if ammount, err = strconv.ParseFloat(args[2], 64); err != nil {
+        panic(err)
+      }
+			var payment Transfer
+			toAcctIndex, err := strconv.ParseInt(args[3], 10, 64)
+			payment = Transfer{[]byte(args[1]), ammount, AccountNumber(nodeDebasedSystem.PrivateKeysFromSession[toAcctIndex].PublicKey)}
+			if !nodeDebasedSystem.DuringConsensus {
+				nodeDebasedSystem.PendingTransactions.Transfers = append(nodeDebasedSystem.PendingTransactions.Transfers, &payment)
+				fmt.Println(nodeDebasedSystem.PendingTransactions.Transfers[len(nodeDebasedSystem.PendingTransactions.Transfers)-1])
+			} else {
+				nodeDebasedSystem.HoldingPenTransactions.Transfers = append(nodeDebasedSystem.HoldingPenTransactions.Transfers, &payment)
+				fmt.Println(nodeDebasedSystem.HoldingPenTransactions.Transfers[len(nodeDebasedSystem.HoldingPenTransactions.Transfers)-1])
+			}
+		}
+		if args[0] == "genBlock" {
+			// fmt.Println(nodeDebasedSystem.GenerateBlock())
+			var newBlock = nodeDebasedSystem.GenerateBlock()
+			nodeDebasedSystem.CurrentBlockHeight = newBlock.BlockHeight
+			nodeDebasedSystem.Metadata = newBlock.UpdatedMD
+			b, err := json.Marshal(nodeDebasedSystem.Metadata)
+	    if err != nil {
+		    fmt.Println("error:", err)
+	    }
+	    os.Stdout.Write(b)
+			fmt.Printf("%+v\n", newBlock)
 		}
 
 		if args[0] == "never" {
