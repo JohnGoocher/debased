@@ -58,6 +58,12 @@ type Edit struct {
   fromAcctID        []byte
 }
 
+// DeletionStub : holds onto data edited over
+type DeletionStub struct {
+	TableID           []byte
+	Cells             []RetiredCellInfo
+}
+
 // Delete : transaction used to delete rows from a table
 type Delete struct {
 	TableID           []byte
@@ -128,6 +134,12 @@ type RecordLocation struct {
 	Position          big.Int
 }
 
+// RetiredCellInfo : used to store location of delete data
+type RetiredCellInfo struct {
+	Cell2DCord        Cell
+	Location          CellLocation
+}
+
 // CellLocation : used to map cells from a table to the blockchain
 type CellLocation struct {
 	BlockNumber       *big.Int
@@ -162,8 +174,8 @@ type TableInfo struct {
 	//               row column
 	Cells             [][]CellLocation
 	Writes            []RecordLocation
-	Edits             []RecordLocation
-	Deletions         []RecordLocation
+	Edits             []DeletionStub
+	Deletions         []DeletionStub
 	DeadTable         bool
 	Permission        TablePermission
 }
@@ -197,18 +209,16 @@ type DebasedSystem struct {
   CurrentBets           []*Bet
 	PendingBetPayouts     []*Transfer
 	PendingTransactions   *Transactions
-	// Future: voting order and complicated payouts
-	// Future: confidence system for inter-node relations
-	// TODO: track accounts/nodes with skin in the game, how much, and where
-	// avoid stuck transactions by allowing killing
 }
 
 // GenerateBlock : creates a new block using the given DebasedSystem state
 func (debasedS *DebasedSystem) GenerateBlock() {
 	newDebasedMD := debasedS.Metadata
 	debasedS.CurrentBlockHeight.Add(&debasedS.CurrentBlockHeight, big.NewInt(1))
+	// Not needed pending new interface to Blockchain
 	// TODO: UPDATE currentRecordLocation whenever a transaction is added to the block
 	currentRecordLocation := RecordLocation{BlockNumber: debasedS.CurrentBlockHeight, Position: *big.NewInt(0)}
+	// Not needed pending new interface to Blockchain/
 	// TODO: UPDATE currentRecordLocation whenever a transaction or is added to the block and intra-transaction when adding data
 	currentCellLocation := CellLocation{BlockNumber: big.NewInt(0), Position: big.NewInt(0), PostionInRecord: big.NewInt(0)}
 	for _, transfer := range debasedS.PendingBetPayouts {
@@ -238,8 +248,8 @@ func (debasedS *DebasedSystem) GenerateBlock() {
                                                Types: create.Types,
 																							 Cells: make([][]CellLocation, 0),
 																							 Writes: make([]RecordLocation, 0),
-																							 Edits: make([]RecordLocation, 0),
-																							 Deletions: make([]RecordLocation, 0),
+																							 Edits: make([]DeletionStub, 0),
+																							 Deletions: make([]DeletionStub, 0),
 																							 DeadTable: false,
 																							 Permission : *(create.PermissionByTable),
 		                                          }
@@ -250,7 +260,7 @@ func (debasedS *DebasedSystem) GenerateBlock() {
 	for _, add := range debasedS.PendingTransactions.Writes {
     //check is fromAcctID has write access to table
 		if newDebasedMD.Accounts[string(add.fromAcctID[:])].Permissions[string(add.TableID[:])].Roles[2] {
-			//TODO: add data to the blockchain
+			// TODO: add data to the blockchain
 			var x = newDebasedMD.Tables[string(add.TableID[:])]
       x.Writes = append(newDebasedMD.Tables[string(add.TableID[:])].Writes, currentRecordLocation)
 			newDebasedMD.Tables[string(add.TableID[:])] = x
@@ -259,6 +269,19 @@ func (debasedS *DebasedSystem) GenerateBlock() {
 					newDebasedMD.Tables[string(add.TableID[:])].Cells[rowIndex][columnIndex] = currentCellLocation
 				}
 			}
+		}
+	}
+	for _, editRequest := range debasedS.PendingTransactions.Edits {
+		var currentTable = newDebasedMD.Tables[string(editRequest.TableID[:])]
+    //check is fromAcctID has edit access to table
+		if newDebasedMD.Accounts[string(editRequest.fromAcctID[:])].Permissions[string(editRequest.TableID[:])].Roles[3] {
+			// TODO: send old data locations to TableInfo.Edit
+			var deletionRecord DeletionStub
+			deletionRecord.TableID = editRequest.TableID
+      for _, cell := range editRequest.Cells {
+				deletionRecord.Cells = append(deletionRecord.Cells, RetiredCellInfo{Cell{cell.X, cell.Y}, currentTable.Cells[cell.X.Uint64()][cell.Y.Uint64()]})
+			}
+			// TODO: add data to the blockchain
 		}
 	}
 	// TODO: Edits, Deletes, PermissionChanges
@@ -274,6 +297,12 @@ func (debasedS *DebasedSystem) GenerateBlock() {
 // TODO: Be able to recognize consensus
 // TODO: Be able to payout accounts with correct votes (part of block generation)
 
+//BIG FUTUREs (WSB STYLE)
+// Future: have decearnment on which transactions to include vs exclude in newly generated blocks
+// Future: avoid dead transactions by allowing killing
+// Future: voting order and complicated payouts
+// Future: confidence system for inter-node relations
+// Future: track accounts/nodes with skin in the game, how much, and where
 
 //AccountNumber : determines account number from PublicKey
 func AccountNumber(publicKey ecdsa.PublicKey) []byte {
