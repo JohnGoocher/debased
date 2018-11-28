@@ -38,8 +38,9 @@ type TableCreation struct {
 // Write : transaction used to write data to a table
 type Write struct {
 	TableID           []byte
-	//               row column data
-	Data              [][][]byte
+	Cells             []*Cell
+	//                [cell1Data, cell2Data, ...]
+	Data              [][]byte
 	fromAcctID        []byte
 }
 
@@ -67,7 +68,7 @@ type DeletionStub struct {
 // Delete : transaction used to delete rows from a table
 type Delete struct {
 	TableID           []byte
-	Rows              []*big.Int
+	Cells             []*Cell
   fromAcctID        []byte
 }
 
@@ -75,6 +76,7 @@ type Delete struct {
 type ChangePermissions struct {
 	TableID             []byte
 	PermissionByTable   *TablePermission
+	//                  acctID : UserPermission
   PermissionByAcct    map[string]UserPermission
   fromAcctID          []byte
 }
@@ -91,10 +93,11 @@ type BlockGenerationBid struct {
 
 // GeneratedBlock : used to send generated block from bid winner to network
 type GeneratedBlock struct {
+	BlockHeight   big.Int
 	// TODO: merge with blockchain and block type
   //CreatedBlock  bc.Block
   // Future: Updated Metadata could be a delta of current Metadata
-	UpdatedMD     DebasedMetadata
+	UpdatedMD     *DebasedMetadata
 }
 
 // Bet : used for staking during PoS
@@ -212,12 +215,13 @@ type DebasedSystem struct {
 }
 
 // GenerateBlock : creates a new block using the given DebasedSystem state
-func (debasedS *DebasedSystem) GenerateBlock() {
+func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
 	newDebasedMD := debasedS.Metadata
-	debasedS.CurrentBlockHeight.Add(&debasedS.CurrentBlockHeight, big.NewInt(1))
+	var newBlockHeight big.Int
+	newBlockHeight.Add(&debasedS.CurrentBlockHeight, big.NewInt(1))
 	// Not needed pending new interface to Blockchain
 	// TODO: UPDATE currentRecordLocation whenever a transaction is added to the block
-	currentRecordLocation := RecordLocation{BlockNumber: debasedS.CurrentBlockHeight, Position: *big.NewInt(0)}
+	currentRecordLocation := RecordLocation{BlockNumber: newBlockHeight, Position: *big.NewInt(0)}
 	// Not needed pending new interface to Blockchain/
 	// TODO: UPDATE currentRecordLocation whenever a transaction or is added to the block and intra-transaction when adding data
 	currentCellLocation := CellLocation{BlockNumber: big.NewInt(0), Position: big.NewInt(0), PostionInRecord: big.NewInt(0)}
@@ -264,34 +268,53 @@ func (debasedS *DebasedSystem) GenerateBlock() {
 			var x = newDebasedMD.Tables[string(add.TableID[:])]
       x.Writes = append(newDebasedMD.Tables[string(add.TableID[:])].Writes, currentRecordLocation)
 			newDebasedMD.Tables[string(add.TableID[:])] = x
-			for rowIndex, row := range add.Data {
-				for columnIndex := range row {
-					newDebasedMD.Tables[string(add.TableID[:])].Cells[rowIndex][columnIndex] = currentCellLocation
-				}
+			for _, eachCell := range add.Cells {
+				newDebasedMD.Tables[string(add.TableID[:])].Cells[eachCell.Y.Uint64()][eachCell.X.Uint64()] = currentCellLocation
 			}
 		}
 	}
 	for _, editRequest := range debasedS.PendingTransactions.Edits {
-		var currentTable = newDebasedMD.Tables[string(editRequest.TableID[:])]
     //check is fromAcctID has edit access to table
 		if newDebasedMD.Accounts[string(editRequest.fromAcctID[:])].Permissions[string(editRequest.TableID[:])].Roles[3] {
-			// TODO: send old data locations to TableInfo.Edit
 			var deletionRecord DeletionStub
 			deletionRecord.TableID = editRequest.TableID
       for _, cell := range editRequest.Cells {
-				deletionRecord.Cells = append(deletionRecord.Cells, RetiredCellInfo{Cell{cell.X, cell.Y}, currentTable.Cells[cell.X.Uint64()][cell.Y.Uint64()]})
+				deletionRecord.Cells = append(deletionRecord.Cells, RetiredCellInfo{Cell{cell.X, cell.Y}, newDebasedMD.Tables[string(editRequest.TableID[:])].Cells[cell.X.Uint64()][cell.Y.Uint64()]})
 			}
+			var x = newDebasedMD.Tables[string(editRequest.TableID[:])]
+			x.Edits = append(newDebasedMD.Tables[string(editRequest.TableID[:])].Edits, deletionRecord)
+			newDebasedMD.Tables[string(editRequest.TableID[:])] = x
 			// TODO: add data to the blockchain
+			for _, eachCell := range editRequest.Cells {
+				newDebasedMD.Tables[string(editRequest.TableID[:])].Cells[eachCell.Y.Uint64()][eachCell.X.Uint64()] = currentCellLocation
+			}
 		}
 	}
-	// TODO: Edits, Deletes, PermissionChanges
+	for _, deltionRequest := range debasedS.PendingTransactions.Deletes {
+		if newDebasedMD.Accounts[string(deltionRequest.fromAcctID[:])].Permissions[string(deltionRequest.TableID[:])].Roles[4] {
+			var deletionRecord DeletionStub
+			deletionRecord.TableID = deltionRequest.TableID
+      for _, cell := range deltionRequest.Cells {
+				deletionRecord.Cells = append(deletionRecord.Cells, RetiredCellInfo{Cell{cell.X, cell.Y}, newDebasedMD.Tables[string(deltionRequest.TableID[:])].Cells[cell.X.Uint64()][cell.Y.Uint64()]})
+			}
+			var x = newDebasedMD.Tables[string(deltionRequest.TableID[:])]
+			x.Edits = append(newDebasedMD.Tables[string(deltionRequest.TableID[:])].Edits, deletionRecord)
+			newDebasedMD.Tables[string(deltionRequest.TableID[:])] = x
+			for _, eachCell := range deltionRequest.Cells {
+				newDebasedMD.Tables[string(deltionRequest.TableID[:])].Cells[eachCell.Y.Uint64()][eachCell.X.Uint64()] = CellLocation{}
+			}
+		}
+	}
+	return GeneratedBlock{newBlockHeight, newDebasedMD}
 }
+
+//BIG TESTs
+// Be able to generate a block and update metadata
 
 //BIG TODOs
 // TODO: Be able to convert between struct <----> JSON
 // TODO: Be able to check if a transaction conforms to debased rules
 // TODO: Be able to choose a node to gen next block
-// TODO: Be able to generate a block and update metadata
 // TODO: Be able to check the correctness of a newly generate block and metadata
 // TODO: Be able to bet
 // TODO: Be able to recognize consensus
@@ -303,6 +326,8 @@ func (debasedS *DebasedSystem) GenerateBlock() {
 // Future: voting order and complicated payouts
 // Future: confidence system for inter-node relations
 // Future: track accounts/nodes with skin in the game, how much, and where
+// Future: table deletion
+// Future: PermissionChanges
 
 //AccountNumber : determines account number from PublicKey
 func AccountNumber(publicKey ecdsa.PublicKey) []byte {
