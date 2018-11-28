@@ -2,17 +2,17 @@ package main
 
 import (
 	// TODO: import blockchain and related structs as bc
+	"bufio"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"bufio"
-  "os"
 	"fmt"
 	"math/big"
 	"reflect"
 	"strconv"
 	//"bytes"
+	"os"
 	"strings"
 	"encoding/json"
 )
@@ -28,11 +28,11 @@ type Transfer struct {
 
 // TableCreation : transaction used to create a new table
 type TableCreation struct {
-	ID                  []byte
-	Fields              []string
-	Types               []string
-  //special check, owner in permission must == AcctID of publicKey used by signer
-	PermissionByTable   *TablePermission
+	ID     []byte
+	Fields []string
+	Types  []string
+	//special check, owner in permission must == AcctID of publicKey used by signer
+	PermissionByTable *TablePermission
 	//                      AcctID : UserPermission
   PermissionByAcct    map[string]UserPermission
 	FromAcctID          []byte
@@ -49,14 +49,14 @@ type Write struct {
 
 // Cell : identifies the column and row af the conceptual table
 type Cell struct {
-	X                 *big.Int
-	Y                 *big.Int
+	X *big.Int
+	Y *big.Int
 }
 
 // Edit : transaction used to change the value of cells within a table
 type Edit struct {
-	TableID           []byte
-	Cells             []*Cell
+	TableID []byte
+	Cells   []*Cell
 	//                [cell1Data, cell2Data, ...]
 	NewDataByCell     [][]byte
   FromAcctID        []byte
@@ -119,25 +119,25 @@ type UserPermission struct {
 	//only one owver allowed (gets billed and can assign permissions to others)
 	//Multiple Admins allowed (can assign permissions to others)
 	//ReadHistory is currently unused
-  //read is currently unused
+	//read is currently unused
 	//Owner,	Admin, WriteData,	EditData , DeleteData,	DeleteTable, ReadHistory,	ReadData
-	Roles             [8]bool
+	Roles [8]bool
 }
 
 // AccountInfo : stores account balance and permissions
 type AccountInfo struct {
-	LiquidBalance     float64
-  //total amount currently staked
-	IlliquidBalance   float64
+	LiquidBalance float64
+	//total amount currently staked
+	IlliquidBalance float64
 	//Permissions key:TableID value:Permission
-	Permissions       map[string]UserPermission
+	Permissions map[string]UserPermission
 }
 
 // RecordLocation : stores the block number and position of a transaction
 type RecordLocation struct {
-	BlockNumber       big.Int
+	BlockNumber big.Int
 	//position 0 is the first transaction in a block
-	Position          big.Int
+	Position big.Int
 }
 
 // RetiredCellInfo : used to store location of delete data
@@ -148,34 +148,34 @@ type RetiredCellInfo struct {
 
 // CellLocation : used to map cells from a table to the blockchain
 type CellLocation struct {
-	BlockNumber       *big.Int
+	BlockNumber *big.Int
 	//position 0 is the first transaction in a block
-	Position          *big.Int
+	Position *big.Int
 	//byte position the cell begins at
-	PostionInRecord   *big.Int
+	PostionInRecord *big.Int
 }
 
 // TablePermission : stores all accounts with a given access level
 type TablePermission struct {
-	Owner             []byte
+	Owner []byte
 	//Multiple Admins allowed (can assign permissions to others)
-	Admins            [][]byte
+	Admins [][]byte
 	//readers is currently unused
-	Readers           [][]byte
-	Writers           [][]byte
-	Editers           [][]byte
-	DataDeleters      [][]byte
-	TableDeleters     [][]byte
+	Readers       [][]byte
+	Writers       [][]byte
+	Editers       [][]byte
+	DataDeleters  [][]byte
+	TableDeleters [][]byte
 	//HistoryReaders is currently unused
-	HistoryReaders    [][]byte
+	HistoryReaders [][]byte
 }
 
 // TableInfo : stores tableSchema, location of each row, which accounts have what access
 type TableInfo struct {
-	CreationStub      RecordLocation
-	ID                []byte
-	Fields            []string
-	Types             []string
+	CreationStub RecordLocation
+	ID           []byte
+	Fields       []string
+	Types        []string
 	//position 0 is the oldest
 	//               row column
 	Cells             [][]CellLocation
@@ -189,19 +189,19 @@ type TableInfo struct {
 // DebasedMetadata : stores account balance, permissions, and table info
 type DebasedMetadata struct {
 	//Accounts key:AcctNumber value: AcctInfo
-  Accounts          map[string]AccountInfo
+	Accounts map[string]AccountInfo
 	//Tables key:TableID value: TableInfo
-	Tables            map[string]TableInfo
+	Tables map[string]TableInfo
 }
 
 // Transactions : stores slices of every transaction type
 type Transactions struct {
-	Transfers           []*Transfer
-	TableCreations      []*TableCreation
-	Writes              []*Write
-	Edits               []*Edit
-	Deletes             []*Delete
-	PermissionChanges   []*ChangePermissions
+	Transfers         []*Transfer
+	TableCreations    []*TableCreation
+	Writes            []*Write
+	Edits             []*Edit
+	Deletes           []*Delete
+	PermissionChanges []*ChangePermissions
 }
 
 //DebasedSystem : model for the nodes' entire view of the debased pos/blockchain system
@@ -264,8 +264,8 @@ func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
 																							 Permission : *(create.PermissionByTable),
 		                                          }
 		for acctID, userPermish := range create.PermissionByAcct {
-        newDebasedMD.Accounts[acctID].Permissions[string(create.ID[:])] = userPermish
-    }
+			newDebasedMD.Accounts[acctID].Permissions[string(create.ID[:])] = userPermish
+		}
 	}
 	for _, add := range debasedS.PendingTransactions.Writes {
     //check is FromAcctID has write access to table
@@ -385,7 +385,7 @@ func (wrapper JSONWrapper) VerifySignature() bool {
 
 //AccountNumber : determines account number from PublicKey
 func AccountNumber(publicKey ecdsa.PublicKey) []byte {
-	hash := sha256.Sum256(append(publicKey.X.Bytes(),publicKey.Y.Bytes()...))
+	hash := sha256.Sum256(append(publicKey.X.Bytes(), publicKey.Y.Bytes()...))
 	return hash[12:]
 }
 
@@ -412,89 +412,141 @@ func main() {
 	                                   }
 
 	dummyMetadata := dummyDebasedMetaData()
+	fmt.Printf("> ")
 	scanner := bufio.NewScanner(os.Stdin)
-  for scanner.Scan() {
-    line := scanner.Text()
+	for scanner.Scan() {
+		line := scanner.Text()
 
-    if line == "exit" {
-      os.Exit(0)
-    }
-    args := strings.Fields(line)
+		if line == "exit" {
+			os.Exit(0)
+		}
+		args := strings.Fields(line)
 
 		if args[0] == "checkBalance" {
 			if val, ok := dummyMetadata.Accounts[args[1]]; ok {
 				balance := val.IlliquidBalance + val.LiquidBalance
-        fmt.Println("Account balance:", balance)
-      } else {
+				fmt.Println("Account balance:", balance)
+			} else {
 				fmt.Println("Account not found")
 			}
 		}
 		if args[0] == "checkRoles" {
 			if _, ok := dummyMetadata.Accounts[args[1]]; !ok {
-        fmt.Println("Account not found")
-      } else {
-			  allRoles := []string{"Owner",	"Admin", "WriteData",	"EditData" , "DeleteData",	"DeleteTable", "ReadHistory",	"ReadData"}
-			  currentMsg := ""
-	  		for k, v := range dummyMetadata.Accounts[args[1]].Permissions {
-          currentMsg = "TableID: " + k + "\n" + "Roles: "
-			  	for index, role := range allRoles {
-				  	if v.Roles[index] {
-					  	currentMsg = currentMsg + role + ", "
-					  }
-				  }
-				  fmt.Println(currentMsg)
-        }
-		  }
+				fmt.Println("Account not found")
+			} else {
+				allRoles := []string{"Owner", "Admin", "WriteData", "EditData", "DeleteData", "DeleteTable", "ReadHistory", "ReadData"}
+				currentMsg := ""
+				for k, v := range dummyMetadata.Accounts[args[1]].Permissions {
+					currentMsg = "TableID: " + k + "\n" + "Roles: "
+					for index, role := range allRoles {
+						if v.Roles[index] {
+							currentMsg = currentMsg + role + ", "
+						}
+					}
+					fmt.Println(currentMsg)
+				}
+			}
 		}
 		if args[0] == "tableAttributes" {
 			if _, ok := dummyMetadata.Tables[args[1]]; !ok {
-        fmt.Println("Table not found")
-      } else {
-			  currentMsg := "["
-			  for _, v := range dummyMetadata.Tables[args[1]].Fields {
-          currentMsg = currentMsg + v + ", "
-        }
-			  currentMsg = currentMsg + "]"
-			  fmt.Println(currentMsg)
-		  }
+				fmt.Println("Table not found")
+			} else {
+				currentMsg := "["
+				for _, v := range dummyMetadata.Tables[args[1]].Fields {
+					currentMsg = currentMsg + v + ", "
+				}
+				currentMsg = currentMsg + "]"
+				fmt.Println(currentMsg)
+			}
 		}
 		if args[0] == "tableData" {
 			if _, ok := dummyMetadata.Tables[args[1]]; !ok {
-        fmt.Println("Table not found")
-      } else {
-  			for _, row := range dummyMetadata.Tables[args[1]].Cells {
-	  			fmt.Print("[")
-          for _, column := range row {
-			  		fmt.Print("(BN: ", column.BlockNumber.String())
-				  	fmt.Print(", POS: ", column.Position.String())
-				  	fmt.Print(", PIR: ", column.PostionInRecord.String(), "), ")
-				  }
-				  fmt.Println("]")
-        }
-		  }
+				fmt.Println("Table not found")
+			} else {
+				for _, row := range dummyMetadata.Tables[args[1]].Cells {
+					fmt.Print("[")
+					for _, column := range row {
+						fmt.Print("(BN: ", column.BlockNumber.String())
+						fmt.Print(", POS: ", column.Position.String())
+						fmt.Print(", PIR: ", column.PostionInRecord.String(), "), ")
+					}
+					fmt.Println("]")
+				}
+			}
 		}
 		if args[0] == "AccessibleTables" {
 			if _, ok := dummyMetadata.Accounts[args[1]]; !ok {
-        fmt.Println("Account not found")
-      } else {
-  			fmt.Println("TableIDs: ")
-	  		for k := range dummyMetadata.Accounts[args[1]].Permissions {
-		  		fmt.Print(k, ", ")
-        }
-		  	fmt.Println()
-		  }
+				fmt.Println("Account not found")
+			} else {
+				fmt.Println("TableIDs: ")
+				for k := range dummyMetadata.Accounts[args[1]].Permissions {
+					fmt.Print(k, ", ")
+				}
+				fmt.Println()
+			}
 		}
 		if args[0] == "tableHistory" {
 			if _, ok := dummyMetadata.Tables[args[1]]; !ok {
-        fmt.Println("Table not found")
-      } else {
-  			fmt.Print("[")
-	  		for _, write := range dummyMetadata.Tables[args[1]].Writes {
-				  fmt.Print("(BN: ", write.BlockNumber.String())
+				fmt.Println("Table not found")
+			} else {
+				fmt.Print("[")
+				for _, write := range dummyMetadata.Tables[args[1]].Writes {
+					fmt.Print("(BN: ", write.BlockNumber.String())
 					fmt.Print(", POS: ", write.Position.String(), "), ")
-        }
+				}
 				fmt.Println("]")
-		  }
+			}
+		}
+
+		if args[0] == "accounts" {
+			for _, account := range dummyMetadata.Accounts {
+				fmt.Printf("%+v\n", account)
+			}
+		}
+
+		if args[0] == "tables" {
+			for _, table := range dummyMetadata.Tables {
+				fmt.Printf("%+v\n", table)
+			}
+		}
+
+		if args[0] == "addAccount" {
+			if _, ok := dummyMetadata.Accounts[args[1]]; !ok {
+				initialPermission := make(map[string]UserPermission)
+				for key, account := range dummyMetadata.Accounts {
+					initialPermission[key] = UserPermission{
+						Roles: [8]bool{
+							false, false, false, false, false, false, false, false,
+						},
+					}
+					account.Permissions[args[1]] = UserPermission{
+						Roles: [8]bool{
+							false, false, false, false, false, false, false, false,
+						},
+					}
+				}
+				dummyMetadata.Accounts[args[1]] = AccountInfo{
+					LiquidBalance:   1,
+					IlliquidBalance: 1,
+					Permissions:     initialPermission,
+				}
+				fmt.Printf("%+v\n", dummyMetadata.Accounts[args[1]])
+			} else {
+				fmt.Println("No accountID provided")
+			}
+		}
+
+		if args[0] == "deleteAccount" {
+			if _, ok := dummyMetadata.Accounts[args[1]]; ok {
+				delete(dummyMetadata.Accounts, args[1])
+				for _, account := range dummyMetadata.Accounts {
+					if _, ok := account.Permissions[args[1]]; ok {
+						delete(account.Permissions, args[1])
+					}
+				}
+			} else {
+				fmt.Println("Account does not exist")
+			}
 		}
 		if args[0] == "createAcct" {
       privateKey, acctID := createAcct()
@@ -536,10 +588,11 @@ func main() {
 		if args[0] == "never" {
 			fmt.Println(dummyMetadata)
 		}
-  }
-  if err := scanner.Err(); err != nil {
-      fmt.Fprintln(os.Stderr, "reading standard input:", err)
-  }
+		fmt.Printf("> ")
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "reading standard input:", err)
+	}
 }
 
 func join(strs ...string) string {
