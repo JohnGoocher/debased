@@ -10,6 +10,8 @@ import (
   "os"
 	"fmt"
 	"math/big"
+	"reflect"
+	"strconv"
 	//"bytes"
 	"strings"
 )
@@ -20,7 +22,7 @@ import (
 type Transfer struct {
 	ToAcctID      []byte
 	Ammount       float64
-	fromAcctID    []byte
+	FromAcctID    []byte
 }
 
 // TableCreation : transaction used to create a new table
@@ -32,7 +34,7 @@ type TableCreation struct {
 	PermissionByTable   *TablePermission
 	//                      AcctID : UserPermission
   PermissionByAcct    map[string]UserPermission
-	fromAcctID          []byte
+	FromAcctID          []byte
 }
 
 // Write : transaction used to write data to a table
@@ -41,7 +43,7 @@ type Write struct {
 	Cells             []*Cell
 	//                [cell1Data, cell2Data, ...]
 	Data              [][]byte
-	fromAcctID        []byte
+	FromAcctID        []byte
 }
 
 // Cell : identifies the column and row af the conceptual table
@@ -56,7 +58,7 @@ type Edit struct {
 	Cells             []*Cell
 	//                [cell1Data, cell2Data, ...]
 	NewDataByCell     [][]byte
-  fromAcctID        []byte
+  FromAcctID        []byte
 }
 
 // DeletionStub : holds onto data edited over
@@ -69,7 +71,7 @@ type DeletionStub struct {
 type Delete struct {
 	TableID           []byte
 	Cells             []*Cell
-  fromAcctID        []byte
+  FromAcctID        []byte
 }
 
 // ChangePermissions : transaction that grants an account permissions for a table
@@ -78,7 +80,7 @@ type ChangePermissions struct {
 	PermissionByTable   *TablePermission
 	//                  acctID : UserPermission
   PermissionByAcct    map[string]UserPermission
-  fromAcctID          []byte
+  FromAcctID          []byte
 }
 
 // BlockGenerationBid : used to offer next block to network at a price
@@ -88,7 +90,7 @@ type BlockGenerationBid struct {
 	Stake         float64
 	BlockNumber   *big.Int
 	EstGenTime    float64
-  fromAcctID    []byte
+  FromAcctID    []byte
 }
 
 // GeneratedBlock : used to send generated block from bid winner to network
@@ -108,7 +110,7 @@ type Bet struct {
 	Confidence    int
 	Round         int
 	BlockHash     []byte
-	fromAcctID    []byte
+	FromAcctID    []byte
 }
 
 // UserPermission : stores a user's access to a given table
@@ -204,14 +206,16 @@ type Transactions struct {
 //DebasedSystem : model for the nodes' entire view of the debased pos/blockchain system
 type DebasedSystem struct {
 	// TODO: Integrate with blockchain
-	CurrentBlockHeight    big.Int
+	CurrentBlockHeight      big.Int
+	DuringConsensus         bool
 	//Blockchain            *bc.Blockchain
-	Metadata              *DebasedMetadata
-	CurrentBids           []*BlockGenerationBid
-	UnconfirmedBlock      *GeneratedBlock
-  CurrentBets           []*Bet
-	PendingBetPayouts     []*Transfer
-	PendingTransactions   *Transactions
+	Metadata                *DebasedMetadata
+	CurrentBids             []*BlockGenerationBid
+	UnconfirmedBlock        *GeneratedBlock
+  CurrentBets             []*Bet
+	PendingBetPayouts       []*Transfer
+	PendingTransactions     *Transactions
+	HoldingPenTransactions  *Transactions
 }
 
 // GenerateBlock : creates a new block using the given DebasedSystem state
@@ -226,18 +230,18 @@ func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
 	// TODO: UPDATE currentRecordLocation whenever a transaction or is added to the block and intra-transaction when adding data
 	currentCellLocation := CellLocation{BlockNumber: big.NewInt(0), Position: big.NewInt(0), PostionInRecord: big.NewInt(0)}
 	for _, transfer := range debasedS.PendingBetPayouts {
-    var x = newDebasedMD.Accounts[string(transfer.fromAcctID[:])]
+    var x = newDebasedMD.Accounts[string(transfer.FromAcctID[:])]
 		x.IlliquidBalance -= transfer.Ammount
-		newDebasedMD.Accounts[string(transfer.fromAcctID[:])] = x
+		newDebasedMD.Accounts[string(transfer.FromAcctID[:])] = x
 		x = newDebasedMD.Accounts[string(transfer.ToAcctID[:])]
 		x.IlliquidBalance -= transfer.Ammount
 		x.LiquidBalance += transfer.Ammount * 2
   	newDebasedMD.Accounts[string(transfer.ToAcctID[:])] = x
 	}
 	for _, transfer := range debasedS.PendingTransactions.Transfers {
-		var x = newDebasedMD.Accounts[string(transfer.fromAcctID[:])]
+		var x = newDebasedMD.Accounts[string(transfer.FromAcctID[:])]
 		x.IlliquidBalance -= transfer.Ammount
-		newDebasedMD.Accounts[string(transfer.fromAcctID[:])] = x
+		newDebasedMD.Accounts[string(transfer.FromAcctID[:])] = x
 		if acct, exist := newDebasedMD.Accounts[string(transfer.ToAcctID[:])]; exist {
       acct.LiquidBalance += transfer.Ammount
     } else {
@@ -245,7 +249,7 @@ func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
 		}
 	}
 	for _, create := range debasedS.PendingTransactions.TableCreations {
-		create.PermissionByTable.Owner = create.fromAcctID
+		create.PermissionByTable.Owner = create.FromAcctID
     newDebasedMD.Tables[string(create.ID[:])] = TableInfo{CreationStub: currentRecordLocation,
 			                                         ID: create.ID,
 																							 Fields: create.Fields,
@@ -262,8 +266,8 @@ func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
     }
 	}
 	for _, add := range debasedS.PendingTransactions.Writes {
-    //check is fromAcctID has write access to table
-		if newDebasedMD.Accounts[string(add.fromAcctID[:])].Permissions[string(add.TableID[:])].Roles[2] {
+    //check is FromAcctID has write access to table
+		if newDebasedMD.Accounts[string(add.FromAcctID[:])].Permissions[string(add.TableID[:])].Roles[2] {
 			// TODO: add data to the blockchain
 			var x = newDebasedMD.Tables[string(add.TableID[:])]
       x.Writes = append(newDebasedMD.Tables[string(add.TableID[:])].Writes, currentRecordLocation)
@@ -274,8 +278,8 @@ func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
 		}
 	}
 	for _, editRequest := range debasedS.PendingTransactions.Edits {
-    //check is fromAcctID has edit access to table
-		if newDebasedMD.Accounts[string(editRequest.fromAcctID[:])].Permissions[string(editRequest.TableID[:])].Roles[3] {
+    //check is FromAcctID has edit access to table
+		if newDebasedMD.Accounts[string(editRequest.FromAcctID[:])].Permissions[string(editRequest.TableID[:])].Roles[3] {
 			var deletionRecord DeletionStub
 			deletionRecord.TableID = editRequest.TableID
       for _, cell := range editRequest.Cells {
@@ -291,7 +295,7 @@ func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
 		}
 	}
 	for _, deltionRequest := range debasedS.PendingTransactions.Deletes {
-		if newDebasedMD.Accounts[string(deltionRequest.fromAcctID[:])].Permissions[string(deltionRequest.TableID[:])].Roles[4] {
+		if newDebasedMD.Accounts[string(deltionRequest.FromAcctID[:])].Permissions[string(deltionRequest.TableID[:])].Roles[4] {
 			var deletionRecord DeletionStub
 			deletionRecord.TableID = deltionRequest.TableID
       for _, cell := range deltionRequest.Cells {
@@ -306,6 +310,16 @@ func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
 		}
 	}
 	return GeneratedBlock{newBlockHeight, newDebasedMD}
+}
+
+//CheckUnconfirmedBlock : used to verify a GeneratedBlock received from the network
+func (debasedS *DebasedSystem) CheckUnconfirmedBlock() bool {
+	var nextBlockHeight big.Int
+	nextBlockHeight.Add(&debasedS.CurrentBlockHeight, big.NewInt(1))
+	if debasedS.UnconfirmedBlock.BlockHeight.Uint64() != nextBlockHeight.Uint64() {
+		return false
+	}
+  return reflect.DeepEqual(debasedS.UnconfirmedBlock, debasedS.GenerateBlock)
 }
 
 // JSONWrapper : used to sign and verify obj sent overnetwork
@@ -330,6 +344,21 @@ func (wrapper JSONWrapper) Sign(privateKey *ecdsa.PrivateKey) error{
 func (wrapper JSONWrapper) VerifySignature() bool {
 	return ecdsa.Verify(wrapper.PK, append([]byte(wrapper.Type), wrapper.Contents...), wrapper.R, wrapper.S)
 }
+
+//NOW TODOs
+// TODO: MAKE consensus occur on a timer
+//       A node creates a block a sends it to the network
+//       Each node then checks the block
+//       The nodes each place their votes
+//       After X time from the strat of the process, the voting is closed
+//       IF approved:
+//                    determine payouts and clear CurrentBets
+//										each node updates their MD and BC
+//                    each node flushes PendingTransactions and PendingBetPayouts
+//                    and move holding bay transactions into pending
+//       IF not repeat
+//                    determine payouts and clear CurrentBets
+//										repeat process
 
 //BIG TESTs
 // Be able to generate a block and update metadata
@@ -452,6 +481,24 @@ func main() {
         }
 				fmt.Println("]")
 		  }
+		}
+		if args[0] == "createAcct" {
+      privateKey, acctID := createAcct()
+			fmt.Println(privateKey)
+			fmt.Println(acctID)
+		}
+		// transfer ToAcct Amount FromAcctPrivateKeyIndex
+		if args[0] == "transfer" {
+			var ammount float64
+			var err error
+			if ammount, err = strconv.ParseFloat(args[2], 64); err != nil {
+        panic(err)
+      }
+			var payment Transfer
+			var toAcctIndex = strconv.ParseInt(args[3], 10, 64)
+			// TODO:PICKUP HERE
+			payment = Transfer{[]byte(args[1]), ammount, []byte(args[3])}
+      fmt.Println(payment)
 		}
 
 		if args[0] == "never" {
