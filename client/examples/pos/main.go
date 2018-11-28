@@ -211,15 +211,19 @@ func (debasedS *DebasedSystem) GenerateBlock() {
 	currentRecordLocation := RecordLocation{BlockNumber: debasedS.CurrentBlockHeight, Position: *big.NewInt(0)}
 	// TODO: UPDATE currentRecordLocation whenever a transaction or is added to the block and intra-transaction when adding data
 	currentCellLocation := CellLocation{BlockNumber: big.NewInt(0), Position: big.NewInt(0), PostionInRecord: big.NewInt(0)}
-	//for i, transfer := range debasedS.PendingBetPayouts {
-		// TODO: THIS OMG THIS PLEASE THE SYSTEM NEEDS THIS AT SUCH A BASIC LEVEL
-    //newDebasedMD.Accounts[string(transfer.fromAcctID[:])].IlliquidBalance -= transfer.Ammount
-		//newDebasedMD.Accounts[string(transfer.ToAcctID[:])].IlliquidBalance -= transfer.Ammount
-  	//newDebasedMD.Accounts[string(transfer.ToAcctID[:])].LiquidBalance += transfer.Ammount * 2
-	//}
+	for _, transfer := range debasedS.PendingBetPayouts {
+    var x = newDebasedMD.Accounts[string(transfer.fromAcctID[:])]
+		x.IlliquidBalance -= transfer.Ammount
+		newDebasedMD.Accounts[string(transfer.fromAcctID[:])] = x
+		x = newDebasedMD.Accounts[string(transfer.ToAcctID[:])]
+		x.IlliquidBalance -= transfer.Ammount
+		x.LiquidBalance += transfer.Ammount * 2
+  	newDebasedMD.Accounts[string(transfer.ToAcctID[:])] = x
+	}
 	for _, transfer := range debasedS.PendingTransactions.Transfers {
-    //// TODO: THIS CANT ASSIGN TO STRUCT FIELD IN A MAP
-		//newDebasedMD.Accounts[string(transfer.fromAcctID[:])].IlliquidBalance -= transfer.Ammount
+		var x = newDebasedMD.Accounts[string(transfer.fromAcctID[:])]
+		x.IlliquidBalance -= transfer.Ammount
+		newDebasedMD.Accounts[string(transfer.fromAcctID[:])] = x
 		if acct, exist := newDebasedMD.Accounts[string(transfer.ToAcctID[:])]; exist {
       acct.LiquidBalance += transfer.Ammount
     } else {
@@ -247,8 +251,9 @@ func (debasedS *DebasedSystem) GenerateBlock() {
     //check is fromAcctID has write access to table
 		if newDebasedMD.Accounts[string(add.fromAcctID[:])].Permissions[string(add.TableID[:])].Roles[2] {
 			//TODO: add data to the blockchain
-			// TODO: THE MAPS HAVE BETRAYED ME
-      //newDebasedMD.Tables[string(add.TableID[:])].Writes = append(newDebasedMD.Tables[string(add.TableID[:])].Writes, currentRecordLocation)
+			var x = newDebasedMD.Tables[string(add.TableID[:])]
+      x.Writes = append(newDebasedMD.Tables[string(add.TableID[:])].Writes, currentRecordLocation)
+			newDebasedMD.Tables[string(add.TableID[:])] = x
 			for rowIndex, row := range add.Data {
 				for columnIndex := range row {
 					newDebasedMD.Tables[string(add.TableID[:])].Cells[rowIndex][columnIndex] = currentCellLocation
