@@ -50,6 +50,11 @@ import (
 	"github.com/multiformats/go-multiaddr"
 )
 
+type streamWrapper struct {
+	net.Stream
+	rw io.ReadWriter
+}
+
 type Client struct {
 	testMap map[string]string
 
@@ -57,7 +62,11 @@ type Client struct {
 	rw map[net.Stream]*bufio.ReadWriter
 
 	// streams map[net.Stream]net.Stream
-	streams map[string]net.Stream
+	// Streams map[string]net.Stream
+	Streams map[string]net.Stream
+	// Streams map[string]interface{}
+
+	buildStreams map[string]peer.ID
 
 	host host.Host
 }
@@ -117,7 +126,7 @@ func (c *Client) handleStream(s net.Stream) {
 	// c.rw[c.host.ID()] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 	c.rw[s] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 	fmt.Printf("c.host.ID().Pretty(): %+v\n", c.host.ID().Pretty())
-	fmt.Printf("BEFORE c.streams: %+v\n", c.streams)
+	fmt.Printf("BEFORE c.streams: %+v\n", c.Streams)
 
 	// if val, ok := dict["foo"]; ok {
 	// 	//do something here
@@ -131,7 +140,8 @@ func (c *Client) handleStream(s net.Stream) {
 	// fmt.Println(string(out))
 
 	// c.streams[s] = s
-	c.streams[fmt.Sprintf("%+v", s)] = s
+
+	c.Streams[fmt.Sprintf("%+v", s)] = s
 
 	// =================================================
 	// =================================================
@@ -148,13 +158,15 @@ func (c *Client) handleStream(s net.Stream) {
 	// =================================================
 	// =================================================
 
-	fmt.Printf("AFTER c.streams: %+v\n", c.streams)
+	fmt.Printf("AFTER c.streams: %+v\n", c.Streams)
+	fmt.Printf("s: %+v\n", s)
 
 	go c.readExampleData(s)
 	go c.writeExampleData(s)
 
 	c.writeStreams(s)
 
+	// panic(errors.New("STAHP"))
 	// go readData(rw)
 	// go writeData(rw)
 
@@ -163,28 +175,71 @@ func (c *Client) handleStream(s net.Stream) {
 
 func (c *Client) writeStreams(s net.Stream) {
 
-	sendData, err := json.Marshal(c.streams)
+	// sendData, err := json.Marshal(c.Streams)
+	// if err != nil {
+	// 	fmt.Println("JSON.MARSHALL PANIC")
+	// 	panic(err)
+	// }
+	// fmt.Println("string(sendData)")
+	// fmt.Println(string(sendData))
+
+	fmt.Println("writeStreams before json.Marshal")
+	fmt.Printf("c.buildStreams: %+v\n", c.buildStreams)
+	fmt.Printf("c.buildStreams: %+v\n", c.buildStreams)
+
+	// ============================================================
+	// ======================TESTING===============================
+	// ============================================================
+
+	sendData, err := json.Marshal(c.buildStreams)
 	if err != nil {
 		fmt.Println("JSON.MARSHALL PANIC")
 		panic(err)
 	}
 
+	// temp := map[string]interface{}
+	// temp := map[string]net.Stream{}
+	// temp := map[string]swarm.Stream{}
+
+	temp := make(map[string]peer.ID)
+
+	if err := json.Unmarshal(sendData, &temp); err != nil {
+		// if err := json.Unmarshal(str, &temp); err != nil {
+		fmt.Println("json unmarshal c.streams error")
+		panic(err)
+	}
+
+	fmt.Println("temp")
+	fmt.Printf("temp: %+v\n", temp)
+
+	// ============================================================
+	// ======================TESTING===============================
+	// ============================================================
+
+	// sendData = append(sendData, '\n')
+
+	fmt.Println("WELL IS THIS WORKING")
+	fmt.Printf("%+v\n", string(sendData))
+	fmt.Printf("%+v\n", sendData)
+
 	// fmt.Println("AFTER SEND DATA")
 	// fmt.Println("before write")
 	// fmt.Printf("sendData: %+v\n", string(sendData))
 	fmt.Println("STRRRRRREEEAMMMMSSSSSSS")
-	fmt.Printf("%+v\n", c.streams)
+	fmt.Printf("%+v\n", c.Streams)
 
-	// c.rw[s].Write(sendData)
-	// c.rw[s].Flush()
-
-	temp := fmt.Sprintf("%+v", c.streams)
-
-	fmt.Println("testing Sprintf")
-	fmt.Println(temp)
-
-	c.rw[s].Write([]byte(temp))
+	c.rw[s].Write(sendData)
 	c.rw[s].Flush()
+
+	fmt.Println("POST FLUSH")
+
+	// temp := fmt.Sprintf("%+v", c.streams)
+
+	// fmt.Println("testing Sprintf")
+	// fmt.Println(temp)
+
+	// c.rw[s].Write([]byte(temp))
+	// c.rw[s].Flush()
 }
 
 // func (c *Client) readStreams(s net.Stream) {
@@ -224,29 +279,48 @@ func (c *Client) readExampleData(s net.Stream) {
 	for {
 		// fmt.Println("FOR LOOP STARTED")
 		// str, err := c.rw[c.host.ID()].ReadSlice('}')
+
+		// IT'S STOPPING AT THE FIRST } THAT IT SEES, BUT THERE IS
+		// MORE TO THE SLICE THAT IS INCOMING
+		fmt.Println("BEFORE STR")
+		// str, err := c.rw[s].ReadSlice('}')
+		// str, err := c.rw[s].ReadSlice('\x00')
 		str, err := c.rw[s].ReadSlice('}')
+		// str, err := c.rw[s].ReadSlice('\n')
+
+		fmt.Println("AFTER READSLICE")
+		if err != nil {
+			fmt.Println("READSLICE PANIC")
+			panic(err)
+		}
+
+		// str = str[:len(str)-1]
+
+		// if _, err := c.rw[s].ReadSlice('\x00'); err != nil {
+		// 	fmt.Println("READSLICE PANIC")
+		// 	panic(err)
+		// }
+		fmt.Println("AFTER STR")
+		fmt.Printf("%+v\n", str)
 
 		fmt.Printf("READING: %+v\n", s)
 		fmt.Println("STTTTRRRREEEEAAAAAMMMMS")
-		fmt.Printf("%+v\n", c.streams)
+		fmt.Printf("%+v\n", c.Streams)
 
-		// fmt.Println("AFTER READSLICE")
-		if err != nil {
-			// fmt.Println("READSLICE PANIC")
-			panic(err)
-		}
 		// fmt.Println("after readSlice")
 		// str = append(str, '"')
 		// str = append(str, '}')
 		fmt.Printf("readslice: %+v\n", string(str))
 		// str = append(str, '}')
 
-		var temp map[string]net.Stream
+		var temp map[string]interface{}
+
+		incomingBuildStreams := map[string]peer.ID{}
 
 		if len(str) > 0 {
 
-			// if err := json.Unmarshal(str, &c.streams); err != nil {
-			if err := json.Unmarshal(str, &temp); err != nil {
+			if err := json.Unmarshal(str, &incomingBuildStreams); err != nil {
+				// if err := json.Unmarshal(str, &temp); err != nil {
 				fmt.Println("json unmarshal c.streams error")
 				panic(err)
 			} else if err := json.Unmarshal(str, &c.testMap); err != nil {
@@ -254,10 +328,24 @@ func (c *Client) readExampleData(s net.Stream) {
 				panic(err)
 			}
 
+			fmt.Println("temp")
+			fmt.Printf("%+v\n", temp)
 			fmt.Println("c.testMap")
 			fmt.Printf("%+v\n", c.testMap)
 			fmt.Println("c.streams")
-			fmt.Printf("%+v\n", c.streams)
+			fmt.Printf("%+v\n", c.Streams)
+
+			if len(incomingBuildStreams) > 0 {
+				fmt.Println("INCOMING STREAMS")
+				fmt.Printf("\nc.bs: %+v\n", c.buildStreams)
+				fmt.Printf("ibs: %+v\n", incomingBuildStreams)
+				for key, value := range incomingBuildStreams {
+					c.buildStreams[key] = value
+				}
+				fmt.Printf("c.bs: %+v\n\n", c.buildStreams)
+				c.buildNewStreams()
+			}
+
 			// fmt.Println("END OF ELSE")
 			// fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
 		} else {
@@ -268,11 +356,63 @@ func (c *Client) readExampleData(s net.Stream) {
 	}
 }
 
+func (c *Client) buildNewStreams() {
+	// fmt.Println("HOW MANY TIMES AM I RUNNING")
+	// fmt.Println("HOW MANY TIMES AM I RUNNING")
+	// fmt.Println("HOW MANY TIMES AM I RUNNING")
+	// fmt.Println("HOW MANY TIMES AM I RUNNING")
+	// fmt.Println("HOW MANY TIMES AM I RUNNING")
+	// fmt.Println("HOW MANY TIMES AM I RUNNING")
+	// fmt.Println("HOW MANY TIMES AM I RUNNING")
+	// fmt.Println("HOW MANY TIMES AM I RUNNING")
+	// fmt.Println("HOW MANY TIMES AM I RUNNING")
+	// fmt.Println("HOW MANY TIMES AM I RUNNING")
+
+	for key, _ := range c.buildStreams {
+		hostID := c.host.ID().Pretty()
+		fmt.Printf("hostID: %+v\n", hostID)
+		fmt.Printf("key: %+v\n", key)
+		if hostID == key {
+			continue
+		} else {
+			// typeCast, err := peer.IDFromString(key)
+			// if err != nil {
+			// 	fmt.Println("Type cast didn't work")
+			// 	panic(err)
+			// }
+			// fmt.Println("key: " + key)
+			// fmt.Printf("c.host.ID(): %+v\n", c.host.ID())
+			// fmt.Printf("value: %+v\n", value)
+			// fmt.Printf("typeCast: %+v\n", typeCast)
+
+			typeCast, err := peer.IDB58Decode(key)
+			fmt.Printf("key: %+v\n", key)
+			if err != nil {
+				fmt.Println("Typecast decode panic")
+				// fmt.Println("key: " + key)
+				panic(err)
+			}
+			s, err := c.host.NewStream(context.Background(), typeCast, "/chat/1.0.0")
+			if err != nil {
+				fmt.Println("THIS PANIC!?!?!?")
+				panic(err)
+			}
+
+			// Create a buffered stream so that read and writes are non blocking.
+			c.rw[s] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
+			go c.readExampleData(s)
+			go c.writeExampleData(s)
+		}
+	}
+	// panic(errors.New("stahp"))
+}
+
 func (c *Client) writeExampleData(s net.Stream) {
 	// testMap := make(map[string]string)
 	stdReader := bufio.NewReader(os.Stdin)
 	count := 0
 	for {
+
 		fmt.Println("count: %i", count)
 		fmt.Print("before> ")
 		data, err := stdReader.ReadString('\n')
@@ -295,7 +435,7 @@ func (c *Client) writeExampleData(s net.Stream) {
 		// fmt.Println("before write")
 		// fmt.Printf("sendData: %+v\n", string(sendData))
 		fmt.Println("STRRRRRREEEAMMMMSSSSSSS")
-		fmt.Printf("%+v\n", c.streams)
+		fmt.Printf("%+v\n", c.Streams)
 
 		for _, writer := range c.rw {
 			writer.Write(sendData)
@@ -396,8 +536,9 @@ func main() {
 	// sampleClient.streams = make(map[peer.ID]net.Stream)
 	// sampleClient.rw = make(map[peer.ID]*bufio.ReadWriter)
 
-	// sampleClient.streams = make(map[net.Stream]net.Stream)
-	sampleClient.streams = make(map[string]net.Stream)
+	// sampleClient.Streams = make(map[string]interface{})
+	sampleClient.Streams = make(map[string]net.Stream)
+	sampleClient.buildStreams = make(map[string]peer.ID)
 
 	sampleClient.rw = make(map[net.Stream]*bufio.ReadWriter)
 
@@ -416,6 +557,9 @@ func main() {
 		// This function is called when a peer connects, and starts a stream with this protocol.
 		// Only applies on the receiving side.
 		host.SetStreamHandler("/chat/1.0.0", sampleClient.handleStream)
+		id := host.ID()
+		idString := host.ID().Pretty()
+		sampleClient.buildStreams[idString] = id
 
 		// Let's get the actual TCP port from our listen multiaddr, in case we're using 0 (default; random available port).
 		var port string
@@ -462,18 +606,38 @@ func main() {
 		// This will be used during connection and stream creation by libp2p.
 		host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 
+		id := host.ID()
+		idString := host.ID().Pretty()
+		sampleClient.buildStreams[idString] = id
+
+		// x := info.ID.Pretty()
+
+		// y, err := peer.IDB58Decode(x)
+
+		// if err != nil {
+		// 	fmt.Println("ARE YOU THE NEW PANIC???")
+		// 	panic(err)
+		// }
+
+		// fmt.Printf("x: %+v\n", x)
+		// fmt.Printf("y: %+v\n", y)
+
+		fmt.Printf("info.ID.String(): %+v\n", info.ID.String())
+		fmt.Printf("info.ID: %+v\n", info.ID)
+
+		// MAYBE TRY USING A SETTTTTTT ORRR  A A A A A A STIRNGGGGG
+		fmt.Printf("sampleClient.buildStreams: %+v\n", sampleClient.buildStreams)
+
 		// Start a stream with the destination.
 		// Multiaddress of the destination peer is fetched from the peerstore using 'peerId'.
+		fmt.Printf("info.ID: %+v\n", info.ID)
 		s, err := host.NewStream(context.Background(), info.ID, "/chat/1.0.0")
 		if err != nil {
 			panic(err)
 		}
 
-		// Create a buffered stream so that read and writes are non blocking.
-		rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
-
 		sampleClient.testMap = make(map[string]string)
-		sampleClient.rw[s] = rw
+		sampleClient.rw[s] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 
 		// sampleClient := &Client{
 		// 	testMap: make(map[string]string),
@@ -486,7 +650,7 @@ func main() {
 		go sampleClient.writeExampleData(s)
 
 		fmt.Println("LET'S CHECK OUT THOSE STREAMS")
-		fmt.Println("%+v\n", sampleClient.streams)
+		fmt.Println("%+v\n", sampleClient.Streams)
 
 		// Create a thread to read and write data.
 		// go writeData(rw)
