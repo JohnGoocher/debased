@@ -14,6 +14,7 @@ import (
 	"strconv"
 	//"bytes"
 	"strings"
+	"encoding/json"
 )
 
 // TODO: Table data and fields need to be encrypted during tableCreation and data entry
@@ -205,6 +206,7 @@ type Transactions struct {
 
 //DebasedSystem : model for the nodes' entire view of the debased pos/blockchain system
 type DebasedSystem struct {
+	PrivateKeysFromSession  []*ecdsa.PrivateKey
 	// TODO: Integrate with blockchain
 	CurrentBlockHeight      big.Int
 	DuringConsensus         bool
@@ -245,7 +247,7 @@ func (debasedS *DebasedSystem) GenerateBlock() GeneratedBlock {
 		if acct, exist := newDebasedMD.Accounts[string(transfer.ToAcctID[:])]; exist {
       acct.LiquidBalance += transfer.Ammount
     } else {
-			newDebasedMD.Accounts[string(transfer.ToAcctID[:])] = AccountInfo{0, transfer.Ammount, make(map[string]UserPermission)}
+			newDebasedMD.Accounts[string(transfer.ToAcctID[:])] = AccountInfo{transfer.Ammount, 0, make(map[string]UserPermission)}
 		}
 	}
 	for _, create := range debasedS.PendingTransactions.TableCreations {
@@ -397,6 +399,18 @@ func createAcct() (*ecdsa.PrivateKey, []byte) {
 }
 
 func main() {
+	nodeDebasedSystem := DebasedSystem{PrivateKeysFromSession: make([]*ecdsa.PrivateKey, 0),
+		                                 CurrentBlockHeight: *big.NewInt(0),
+																		 DuringConsensus: false,
+																		 Metadata: &DebasedMetadata{Accounts: make(map[string]AccountInfo), Tables: make(map[string]TableInfo)},
+																		 CurrentBids: make([]*BlockGenerationBid, 0),
+																		 UnconfirmedBlock: nil,
+																		 CurrentBets: make([]*Bet, 0),
+																		 PendingBetPayouts: make([]*Transfer, 0),
+																		 PendingTransactions: &Transactions{},
+																		 HoldingPenTransactions: &Transactions{},
+	                                   }
+
 	dummyMetadata := dummyDebasedMetaData()
 	scanner := bufio.NewScanner(os.Stdin)
   for scanner.Scan() {
@@ -484,6 +498,7 @@ func main() {
 		}
 		if args[0] == "createAcct" {
       privateKey, acctID := createAcct()
+			nodeDebasedSystem.PrivateKeysFromSession = append(nodeDebasedSystem.PrivateKeysFromSession, privateKey)
 			fmt.Println(privateKey)
 			fmt.Println(acctID)
 		}
@@ -495,10 +510,27 @@ func main() {
         panic(err)
       }
 			var payment Transfer
-			var toAcctIndex = strconv.ParseInt(args[3], 10, 64)
-			// TODO:PICKUP HERE
-			payment = Transfer{[]byte(args[1]), ammount, []byte(args[3])}
-      fmt.Println(payment)
+			toAcctIndex, err := strconv.ParseInt(args[3], 10, 64)
+			payment = Transfer{[]byte(args[1]), ammount, AccountNumber(nodeDebasedSystem.PrivateKeysFromSession[toAcctIndex].PublicKey)}
+			if !nodeDebasedSystem.DuringConsensus {
+				nodeDebasedSystem.PendingTransactions.Transfers = append(nodeDebasedSystem.PendingTransactions.Transfers, &payment)
+				fmt.Println(nodeDebasedSystem.PendingTransactions.Transfers[len(nodeDebasedSystem.PendingTransactions.Transfers)-1])
+			} else {
+				nodeDebasedSystem.HoldingPenTransactions.Transfers = append(nodeDebasedSystem.HoldingPenTransactions.Transfers, &payment)
+				fmt.Println(nodeDebasedSystem.HoldingPenTransactions.Transfers[len(nodeDebasedSystem.HoldingPenTransactions.Transfers)-1])
+			}
+		}
+		if args[0] == "genBlock" {
+			// fmt.Println(nodeDebasedSystem.GenerateBlock())
+			var newBlock = nodeDebasedSystem.GenerateBlock()
+			nodeDebasedSystem.CurrentBlockHeight = newBlock.BlockHeight
+			nodeDebasedSystem.Metadata = newBlock.UpdatedMD
+			b, err := json.Marshal(nodeDebasedSystem.Metadata)
+	    if err != nil {
+		    fmt.Println("error:", err)
+	    }
+	    os.Stdout.Write(b)
+			fmt.Printf("%+v\n", newBlock)
 		}
 
 		if args[0] == "never" {
