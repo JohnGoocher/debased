@@ -1136,8 +1136,8 @@ func main() {
 		}
 		args := strings.Fields(line)
 
-		if args[0] == "checkBalance" {
-			if val, ok := dummyMetadata.Accounts[args[1]]; ok {
+		if args[0] == "checkBalance" && len(args) == 2{
+			if val, ok := nodeDebasedSystem.Metadata.Accounts[args[1]]; ok {
 				balance := val.IlliquidBalance + val.LiquidBalance
 				fmt.Println("Account balance:", balance)
 			} else {
@@ -1262,14 +1262,14 @@ func main() {
 				fmt.Println("Account does not exist")
 			}
 		}
-		if args[0] == "createAcct" {
-			privateKey, acctID := createAcct()
+		if args[0] == "createAcct" && len(args) == 1 {
+      privateKey, acctID := createAcct()
 			nodeDebasedSystem.PrivateKeysFromSession = append(nodeDebasedSystem.PrivateKeysFromSession, privateKey)
 			fmt.Println(privateKey)
 			fmt.Println(acctID)
 		}
 		// transfer ToAcct Amount FromAcctPrivateKeyIndex
-		if args[0] == "transfer" {
+		if args[0] == "transfer" && len(args) == 4 {
 			var ammount float64
 			var err error
 			if ammount, err = strconv.ParseFloat(args[2], 64); err != nil {
@@ -1320,7 +1320,8 @@ func main() {
 			sampleClient.writeExampleData(data, sampleClient.stream)
 
 		}
-		if args[0] == "genBlock" {
+		// genBlock currentAcctIndexInCurrentAccts
+		if args[0] == "genBlock" && len(args) == 2 {
 			// fmt.Println(nodeDebasedSystem.GenerateBlock())
 			var newBlock = nodeDebasedSystem.GenerateBlock()
 			nodeDebasedSystem.CurrentBlockHeight = newBlock.BlockHeight
@@ -1329,8 +1330,11 @@ func main() {
 			if err != nil {
 				fmt.Println("error:", err)
 			}
-			os.Stdout.Write(b)
-			fmt.Printf("%+v\n", newBlock)
+			wrapper := &JSONWrapper{Type:"GeneratedBlock", Contents:b}
+			toAcctIndex, err := strconv.ParseInt(args[1], 10, 64)
+			wrapper.Sign(nodeDebasedSystem.PrivateKeysFromSession[toAcctIndex])
+			fmt.Println(wrapper)
+      fmt.Println("Signature is valid:", wrapper.VerifySignature())
 		}
 
 		if args[0] == "never" {
