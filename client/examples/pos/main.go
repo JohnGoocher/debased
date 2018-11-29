@@ -335,7 +335,7 @@ type JSONWrapper struct {
 }
 
 // Sign : assgins PK, R, S to JSONWrapper
-func (wrapper JSONWrapper) Sign(privateKey *ecdsa.PrivateKey) error{
+func (wrapper *JSONWrapper) Sign(privateKey *ecdsa.PrivateKey) error{
 	var err error
 	wrapper.R, wrapper.S, err = ecdsa.Sign(rand.Reader, privateKey, append([]byte(wrapper.Type), wrapper.Contents...))
 	wrapper.PK = &privateKey.PublicKey
@@ -343,7 +343,7 @@ func (wrapper JSONWrapper) Sign(privateKey *ecdsa.PrivateKey) error{
 }
 
 // VerifySignature : verifies the signature in JSONWrapper
-func (wrapper JSONWrapper) VerifySignature() bool {
+func (wrapper *JSONWrapper) VerifySignature() bool {
 	return ecdsa.Verify(wrapper.PK, append([]byte(wrapper.Type), wrapper.Contents...), wrapper.R, wrapper.S)
 }
 
@@ -422,8 +422,8 @@ func main() {
 		}
 		args := strings.Fields(line)
 
-		if args[0] == "checkBalance" {
-			if val, ok := dummyMetadata.Accounts[args[1]]; ok {
+		if args[0] == "checkBalance" && len(args) == 2{
+			if val, ok := nodeDebasedSystem.Metadata.Accounts[args[1]]; ok {
 				balance := val.IlliquidBalance + val.LiquidBalance
 				fmt.Println("Account balance:", balance)
 			} else {
@@ -548,14 +548,14 @@ func main() {
 				fmt.Println("Account does not exist")
 			}
 		}
-		if args[0] == "createAcct" {
+		if args[0] == "createAcct" && len(args) == 1 {
       privateKey, acctID := createAcct()
 			nodeDebasedSystem.PrivateKeysFromSession = append(nodeDebasedSystem.PrivateKeysFromSession, privateKey)
 			fmt.Println(privateKey)
 			fmt.Println(acctID)
 		}
 		// transfer ToAcct Amount FromAcctPrivateKeyIndex
-		if args[0] == "transfer" {
+		if args[0] == "transfer" && len(args) == 4 {
 			var ammount float64
 			var err error
 			if ammount, err = strconv.ParseFloat(args[2], 64); err != nil {
@@ -572,17 +572,37 @@ func main() {
 				fmt.Println(nodeDebasedSystem.HoldingPenTransactions.Transfers[len(nodeDebasedSystem.HoldingPenTransactions.Transfers)-1])
 			}
 		}
-		if args[0] == "genBlock" {
+		// genBlock currentAcctIndexInCurrentAccts
+		if args[0] == "genBlock" && len(args) == 2 {
 			// fmt.Println(nodeDebasedSystem.GenerateBlock())
 			var newBlock = nodeDebasedSystem.GenerateBlock()
-			nodeDebasedSystem.CurrentBlockHeight = newBlock.BlockHeight
-			nodeDebasedSystem.Metadata = newBlock.UpdatedMD
-			b, err := json.Marshal(nodeDebasedSystem.Metadata)
+			b, err := json.Marshal(newBlock)
 	    if err != nil {
 		    fmt.Println("error:", err)
 	    }
-	    os.Stdout.Write(b)
-			fmt.Printf("%+v\n", newBlock)
+			wrapper := &JSONWrapper{Type:"GeneratedBlock", Contents:b}
+			toAcctIndex, err := strconv.ParseInt(args[1], 10, 64)
+			wrapper.Sign(nodeDebasedSystem.PrivateKeysFromSession[toAcctIndex])
+			//fmt.Println("ORIG WRAPPER")
+			fmt.Println(wrapper)
+			fmt.Println(wrapper.VerifySignature())
+
+			//fmt.Println("WRAPPER AFTER MARSHAL UNMARSHAL")
+			//if err != nil {
+		  //  fmt.Println("error:", err)
+	    //}
+			//jsonOfWrapper, err := json.Marshal(*wrapper)
+			//var unMarshaledWrapper JSONWrapper
+			//err = json.Unmarshal(jsonOfWrapper, &unMarshaledWrapper)
+			//if err != nil {
+		  //  fmt.Println("error:", err)
+	    //}
+			//fmt.Println(unMarshaledWrapper)
+      //fmt.Println("Signature is:", (*x).VerifySignature())
+			//fmt.Println("Signer matches currect account:", )
+			//nodeDebasedSystem.CurrentBlockHeight = newBlock.BlockHeight
+			//nodeDebasedSystem.Metadata = newBlock.UpdatedMD
+			//fmt.Printf("%+v\n", newBlock)
 		}
 
 		if args[0] == "never" {
