@@ -2,14 +2,16 @@ package main
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
+	// "encoding/hex"
 	//"fmt"
 	"log"
-	"strings"
+	//"strings"
+	"strconv"
 
 	// for creating a buffer for ouputting the blockchain
-	// "bytes"
+	"bytes"
 	"github.com/davecgh/go-spew/spew"
+	// "math/big"
 	// for finding the type of an object for testing purposes
 	// "reflect"
 	// Example of reflect:
@@ -24,23 +26,40 @@ import (
 	// "github.com/"
 )
 
+// // -----------------------------------------------------------------------------
+// // -----------------------------------------------------------------------------
+// // -----------------------------------------------------------------------------
+// // -----------------------------------------------------------------------------
+// // ----------------------------------BLOCK--------------------------------------
+// // -----------------------------------------------------------------------------
+// // -----------------------------------------------------------------------------
+// // -----------------------------------------------------------------------------
+// // -----------------------------------------------------------------------------
+
+// The Block type
+type Block struct {
+	// TODO: Do a slice of bytes
+	Transactions  [][]byte
+	PublicKey     []byte
+	PrevPublicKey []byte
+	Index         int
+}
+
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-// ----------------------------------BLOCK--------------------------------------
-// -----------------------------------------------------------------------------
+// --------------------------------CELL LOCATION-----------------------------------
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 
-// The Block type
-type Block struct {
-	Transactions  []string
-	PublicKey     string
-	PrevPublicKey string
-	Index         int
-}
+// type CellLocation struct {
+// 	BlockNumber *big.Int
+// 	//position 0 is the first transaction in a block
+// 	Position *big.Int
+// 	//byte position the cell begins at
+// 	PostionInRecord *big.Int
+// }
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -77,29 +96,6 @@ func (blockChain *BlockChain) replaceChain(newBlocks []*Block) {
 	}
 }
 
-
-// This is the toString method of a blockChain that will output the slice of
-// blocks
-// func (blockChain BlockChain) String() string {
-// 	// blockChain.Blocks is of type []*Block
-//
-// 	var buffer bytes.Buffer
-//
-// 	buffer.WriteString("{\n")
-//
-// 	for _, block := range blockChain.Blocks {
-// 		buffer.WriteString("[ ")
-// 		for _, transaction := range block.Transactions {
-// 			buffer.WriteString(transaction)
-// 			buffer.WriteString(", ")
-// 		}
-// 		buffer.WriteString("],\n")
-// 	}
-//
-// 	buffer.WriteString("}")
-// 	return buffer.String()
-// }
-
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -110,17 +106,27 @@ func (blockChain *BlockChain) replaceChain(newBlocks []*Block) {
 
 // Calculates the Hash for the block inserted
 // This function assumes that all fields of the block have been instantiated
-func calculateHash(b Block) string {
-	record := string(b.Index) + strings.Join(b.Transactions, ",") + b.PrevPublicKey
+
+// TODO: ensure that we can append byte slices together where record is.
+func calculateHash(b Block) []byte {
+	// buffer := bytes.Buffer
+	// buffer.WriteString(strconv.Itoa(b.Index))
+	// byte(strconv.Itoa(b.Index))
+	// buffer.WriteString(string(bytes.Join(b.Transactions, []byte(""))))
+	// bytes.Join(b.Transactions, []byte(""))
+	// buffer.WriteString(string(b.PrevPublicKey))
+	// b.PrevPublicKey
 	h := sha256.New()
-	h.Write([]byte(record))
+	h.Write([]byte(strconv.Itoa(b.Index)))
+	h.Write(bytes.Join(b.Transactions, []byte("")))
+	h.Write(b.PrevPublicKey)
 	hashed := h.Sum(nil)
-	return hex.EncodeToString(hashed)
+	return hashed
 }
 
 // "createBlock" is a function which creates a new block. This function does
 // not add a block to the BlockChain - done by addBlock.
-func createBlock(oldBlock *Block, transactions []string) (*Block, error) {
+func createBlock(oldBlock *Block, transactions [][]byte) (*Block, error) {
 
 	newBlock := &Block{
 		Index:         oldBlock.Index + 1,
@@ -137,7 +143,7 @@ func createBlock(oldBlock *Block, transactions []string) (*Block, error) {
 // TODO: Ensure that all fields on the block given are instantiated in this function as well?
 func isBlockValid(newBlock, oldBlock Block) bool {
 
-	if newBlock.PrevPublicKey != oldBlock.PublicKey {
+	if bytes.Compare(newBlock.PrevPublicKey, oldBlock.PublicKey) != 0 {
 		return false
 	}
 
@@ -145,7 +151,7 @@ func isBlockValid(newBlock, oldBlock Block) bool {
 		return false
 	}
 
-	if calculateHash(newBlock) != newBlock.PublicKey {
+	if bytes.Compare(calculateHash(newBlock), newBlock.PublicKey) != 0 {
 		return false
 	}
 
@@ -161,16 +167,23 @@ func isBlockValid(newBlock, oldBlock Block) bool {
 // -----------------------------------------------------------------------------
 
 func main() {
-	initialTransactions := []string{"hey", "hi", "how are you?"}
-	secondaryTransactions := []string{"yo", "yo"}
+
+	// Build the initial 2d slice
+	initialBlockTransactions := [][]byte{}
+	firstTransaction := []byte{'a','b', 'c'}
+	secondTransaction := []byte{'d','e','f'}
+
+	initialBlockTransactions = append(initialBlockTransactions, firstTransaction)
+	initialBlockTransactions = append(initialBlockTransactions, secondTransaction)
+
 
 	// A block contains the Transactions, PublicKey, PrevPublicKey, and Index fields
 	// respectively
 
 	genesisBlock := &Block{
-		Transactions:  initialTransactions,
-		PublicKey:     "",
-		PrevPublicKey: "",
+		Transactions:  initialBlockTransactions,
+		PublicKey:     []byte{},
+		PrevPublicKey: []byte{},
 		Index:         0,
 	}
 
@@ -180,23 +193,49 @@ func main() {
 
 	blockChain.addBlock(genesisBlock)
 
-	recentBlock, err := blockChain.getLastBlock()
-	// recentBlock is now a pointer to the last block in the block chain now
+
+	// Create a second block for testing purposes
+	firstBlock, err := blockChain.getLastBlock()
+	// firstBlock is now a pointer to the last block in the block chain now
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Build the second 2d slice
+	secondBlockTransactions := [][]byte{}
+	thirdTransaction := []byte{'g','h','i'}
+	fourthTransaction := []byte{'j','k','l'}
+
+	secondBlockTransactions = append(secondBlockTransactions, thirdTransaction)
+	secondBlockTransactions = append(secondBlockTransactions, fourthTransaction)
+
 	// Generates a new block and puts it at the front of the BlockChain
-	newBlock, err := createBlock(recentBlock, secondaryTransactions)
+	newBlock, err := createBlock(firstBlock, secondBlockTransactions)
 
 	if err != nil {
 		// fmt.Println("Hey there is an error in generating this new block")
 		log.Fatal(err)
 	}
 
+
 	blockChain.addBlock(newBlock)
 
+
+	// Create a third block for testing purposes
+
+	secondBlock, err := blockChain.getLastBlock()
+
+	thirdBlockTransactions := [][]byte{}
+	fifthTransaction := []byte{'m','n','o'}
+	sixthTransaction := []byte{'p','q','r'}
+
+	thirdBlockTransactions = append(thirdBlockTransactions, fifthTransaction)
+	thirdBlockTransactions = append(thirdBlockTransactions, sixthTransaction)
+
+	newerBlock, err := createBlock(secondBlock, thirdBlockTransactions)
+
+	blockChain.addBlock(newerBlock)
+
 	spew.Dump(blockChain)
-	//fmt.Println(blockChain)
 }
