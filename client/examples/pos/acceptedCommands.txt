@@ -1,6 +1,10 @@
 checkBalance acctID
 checkRoles acctID
-AccessibleTables acctID
+accessibleTables acctID
 tableAttributes tableID
 tableData tableID
 tableHistory tableID
+
+
+tableIDs: photos, first
+acctIDs: cantSeeMe, theOvertaker, thePebble, bruceBanner, robForwardlund

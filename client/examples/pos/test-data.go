@@ -19,16 +19,6 @@ func dummyDebasedMetaData() DebasedMetadata {
 							false, false, true, true, false, true, false, true,
 						},
 					},
-					"bruceBanner": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
-					"robForwardlund": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
 				},
 			},
 			"theOvertaker": AccountInfo{
@@ -41,16 +31,6 @@ func dummyDebasedMetaData() DebasedMetadata {
 						},
 					},
 					"photos": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
-					"bruceBanner": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
-					"robForwardlund": UserPermission{
 						Roles: [8]bool{
 							false, false, true, true, false, true, false, true,
 						},
@@ -71,38 +51,13 @@ func dummyDebasedMetaData() DebasedMetadata {
 							false, false, true, true, false, true, false, true,
 						},
 					},
-					"bruceBanner": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
-					"robForwardlund": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
 				},
 			},
 			"bruceBanner": AccountInfo{
 				LiquidBalance:   7,
 				IlliquidBalance: 8,
 				Permissions: map[string]UserPermission{
-					"theOvertaker": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
-					"cantSeeMe": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
-					"thePebble": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
-					"robForwardlund": UserPermission{
+					"first": UserPermission{
 						Roles: [8]bool{
 							false, false, true, true, false, true, false, true,
 						},
@@ -113,22 +68,7 @@ func dummyDebasedMetaData() DebasedMetadata {
 				LiquidBalance:   9,
 				IlliquidBalance: 10,
 				Permissions: map[string]UserPermission{
-					"theOvertaker": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
-					"cantSeeMe": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
-					"thePebble": UserPermission{
-						Roles: [8]bool{
-							false, false, true, true, false, true, false, true,
-						},
-					},
-					"bruceBanner": UserPermission{
+					"first": UserPermission{
 						Roles: [8]bool{
 							false, false, true, true, false, true, false, true,
 						},

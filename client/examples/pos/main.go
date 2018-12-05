@@ -474,7 +474,7 @@ func main() {
 				}
 			}
 		}
-		if args[0] == "AccessibleTables" {
+		if args[0] == "accessibleTables" {
 			if _, ok := dummyMetadata.Accounts[args[1]]; !ok {
 				fmt.Println("Account not found")
 			} else {
