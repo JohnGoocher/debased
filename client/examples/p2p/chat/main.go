@@ -33,6 +33,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -66,7 +67,8 @@ type Client struct {
 	Streams map[string]net.Stream
 	// Streams map[string]interface{}
 
-	buildStreams map[string]peer.ID
+	// buildStreams map[string]peer.ID
+	buildStreams map[string]bool
 
 	host host.Host
 }
@@ -104,6 +106,8 @@ func addAddrToPeerstore(h host.Host, addr string) peer.ID {
 
 func (c *Client) handleStream(s net.Stream) {
 	log.Println("Got a new stream!")
+	fmt.Printf("s.Conn().Stat(): %+v\n", s.Conn().Stat())
+	fmt.Printf("s.Protocol(): %+v\n", s.Protocol())
 	fmt.Printf("s.Conn().LocalPeer: %+v\n", s.Conn().LocalPeer)
 	fmt.Printf("s.Conn().LocalPrivateKey: %+v\n", s.Conn().LocalPrivateKey)
 	fmt.Printf("s.Conn().LocalMultiaddr: %+v\n", s.Conn().LocalMultiaddr)
@@ -111,7 +115,8 @@ func (c *Client) handleStream(s net.Stream) {
 	fmt.Printf("s.Conn().RemotePublicKey: %+v\n", s.Conn().RemotePublicKey)
 	fmt.Printf("s.Conn().RemoteMultiaddr: %+v\n", s.Conn().RemoteMultiaddr)
 	fmt.Printf("s.Stat(): %+v\n", s.Stat())
-	fmt.Printf("s.Protocol(): %+v\n", s.Protocol())
+	fmt.Printf("s.Conn(): %+v\n", s.Conn())
+	// fmt.Printf("s.Protocol(): %+v\n", s.Protocol
 
 	// uuid := xid.New()
 	// fmt.Println(uuid.String())
@@ -126,6 +131,9 @@ func (c *Client) handleStream(s net.Stream) {
 	// c.rw[c.host.ID()] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 	c.rw[s] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 	fmt.Printf("c.host.ID().Pretty(): %+v\n", c.host.ID().Pretty())
+
+	// c.buildStreams[s]
+
 	fmt.Printf("BEFORE c.streams: %+v\n", c.Streams)
 
 	// if val, ok := dict["foo"]; ok {
@@ -164,6 +172,11 @@ func (c *Client) handleStream(s net.Stream) {
 	go c.readExampleData(s)
 	go c.writeExampleData(s)
 
+	fmt.Printf("%+v\n", c.Streams)
+	fmt.Printf("%+v\n", s)
+
+	// panic(errors.New("asldfjalfd"))
+
 	c.writeStreams(s)
 
 	// panic(errors.New("STAHP"))
@@ -201,7 +214,8 @@ func (c *Client) writeStreams(s net.Stream) {
 	// temp := map[string]net.Stream{}
 	// temp := map[string]swarm.Stream{}
 
-	temp := make(map[string]peer.ID)
+	// temp := make(map[string]peer.ID)
+	temp := make(map[string]bool)
 
 	if err := json.Unmarshal(sendData, &temp); err != nil {
 		// if err := json.Unmarshal(str, &temp); err != nil {
@@ -313,19 +327,32 @@ func (c *Client) readExampleData(s net.Stream) {
 		fmt.Printf("readslice: %+v\n", string(str))
 		// str = append(str, '}')
 
+		// panic(errors.New("ASDLKAJSDFLKASJDF;LAKDSFAFD"))
+
 		var temp map[string]interface{}
 
-		incomingBuildStreams := map[string]peer.ID{}
+		// incomingBuildStreams := map[string]peer.ID{}
+		incomingBuildStreams := map[string]bool{}
+
+		fmt.Println("MORE MORE MORE")
+		fmt.Println("MORE MORE MORE")
+		fmt.Println("MORE MORE MORE")
 
 		if len(str) > 0 {
 
-			if err := json.Unmarshal(str, &incomingBuildStreams); err != nil {
+			if err := json.Unmarshal(str, &incomingBuildStreams); err == nil {
 				// if err := json.Unmarshal(str, &temp); err != nil {
-				fmt.Println("json unmarshal c.streams error")
-				panic(err)
-			} else if err := json.Unmarshal(str, &c.testMap); err != nil {
-				fmt.Println("json unmarshal c.testMap error")
-				panic(err)
+				// fmt.Println("json unmarshal c.streams error")
+				fmt.Println("incomingBuildStreams works")
+				// panic(err)
+				continue
+			} else if err := json.Unmarshal(str, &c.testMap); err == nil {
+				// fmt.Println("json unmarshal c.testMap error")
+				// panic(err)
+				fmt.Println("c.testMap works")
+				continue
+			} else {
+				panic(errors.New("Couldn't unmarshal in readData"))
 			}
 
 			fmt.Println("temp")
@@ -334,13 +361,17 @@ func (c *Client) readExampleData(s net.Stream) {
 			fmt.Printf("%+v\n", c.testMap)
 			fmt.Println("c.streams")
 			fmt.Printf("%+v\n", c.Streams)
+			fmt.Println("incomingBuildStreams")
+			fmt.Printf("%+v\n", incomingBuildStreams)
 
 			if len(incomingBuildStreams) > 0 {
 				fmt.Println("INCOMING STREAMS")
 				fmt.Printf("\nc.bs: %+v\n", c.buildStreams)
 				fmt.Printf("ibs: %+v\n", incomingBuildStreams)
-				for key, value := range incomingBuildStreams {
-					c.buildStreams[key] = value
+				for key, _ := range incomingBuildStreams {
+					// c.buildStreams[key] = value
+					_, ok := c.buildStreams[key]
+					c.buildStreams[key] = ok
 				}
 				fmt.Printf("c.bs: %+v\n\n", c.buildStreams)
 				c.buildNewStreams()
@@ -357,24 +388,30 @@ func (c *Client) readExampleData(s net.Stream) {
 }
 
 func (c *Client) buildNewStreams() {
-	// fmt.Println("HOW MANY TIMES AM I RUNNING")
-	// fmt.Println("HOW MANY TIMES AM I RUNNING")
-	// fmt.Println("HOW MANY TIMES AM I RUNNING")
-	// fmt.Println("HOW MANY TIMES AM I RUNNING")
-	// fmt.Println("HOW MANY TIMES AM I RUNNING")
-	// fmt.Println("HOW MANY TIMES AM I RUNNING")
-	// fmt.Println("HOW MANY TIMES AM I RUNNING")
-	// fmt.Println("HOW MANY TIMES AM I RUNNING")
-	// fmt.Println("HOW MANY TIMES AM I RUNNING")
-	// fmt.Println("HOW MANY TIMES AM I RUNNING")
-
-	for key, _ := range c.buildStreams {
+	fmt.Println("HOW MANY TIMES AM I RUNNING")
+	fmt.Println("HOW MANY TIMES AM I RUNNING")
+	fmt.Println("HOW MANY TIMES AM I RUNNING")
+	fmt.Println("HOW MANY TIMES AM I RUNNING")
+	fmt.Println("HOW MANY TIMES AM I RUNNING")
+	fmt.Println("HOW MANY TIMES AM I RUNNING")
+	fmt.Println("HOW MANY TIMES AM I RUNNING")
+	fmt.Println("HOW MANY TIMES AM I RUNNING")
+	fmt.Println("HOW MANY TIMES AM I RUNNING")
+	fmt.Println("HOW MANY TIMES AM I RUNNING")
+	fmt.Println("c.buildNewStreams")
+	fmt.Printf("%+v\n", c.buildStreams)
+	for key, value := range c.buildStreams {
 		hostID := c.host.ID().Pretty()
 		fmt.Printf("hostID: %+v\n", hostID)
 		fmt.Printf("key: %+v\n", key)
-		if hostID == key {
+		if hostID == key || value == true {
+			fmt.Println("I AM HEREREEE")
+			fmt.Println("I AM HEREREEE")
+			fmt.Println("I AM HEREREEE")
+			fmt.Println("I AM HEREREEE")
 			continue
 		} else {
+			c.buildStreams[key] = true
 			// typeCast, err := peer.IDFromString(key)
 			// if err != nil {
 			// 	fmt.Println("Type cast didn't work")
@@ -384,7 +421,7 @@ func (c *Client) buildNewStreams() {
 			// fmt.Printf("c.host.ID(): %+v\n", c.host.ID())
 			// fmt.Printf("value: %+v\n", value)
 			// fmt.Printf("typeCast: %+v\n", typeCast)
-
+			panic(errors.New("ASDLKAJSDFLKASJDF;LAKDSFAFD"))
 			typeCast, err := peer.IDB58Decode(key)
 			fmt.Printf("key: %+v\n", key)
 			if err != nil {
@@ -538,7 +575,8 @@ func main() {
 
 	// sampleClient.Streams = make(map[string]interface{})
 	sampleClient.Streams = make(map[string]net.Stream)
-	sampleClient.buildStreams = make(map[string]peer.ID)
+	// sampleClient.buildStreams = make(map[string]peer.ID)
+	sampleClient.buildStreams = make(map[string]bool)
 
 	sampleClient.rw = make(map[net.Stream]*bufio.ReadWriter)
 
@@ -557,9 +595,12 @@ func main() {
 		// This function is called when a peer connects, and starts a stream with this protocol.
 		// Only applies on the receiving side.
 		host.SetStreamHandler("/chat/1.0.0", sampleClient.handleStream)
-		id := host.ID()
+		// id := host.ID()
 		idString := host.ID().Pretty()
-		sampleClient.buildStreams[idString] = id
+		// sampleClient.buildStreams[idString] = id
+		sampleClient.buildStreams[idString] = true
+
+		fmt.Printf("sampleClient.buildStreams: %+v\n", sampleClient.buildStreams)
 
 		// Let's get the actual TCP port from our listen multiaddr, in case we're using 0 (default; random available port).
 		var port string
@@ -587,17 +628,26 @@ func main() {
 		}
 		fmt.Println()
 
+		fmt.Printf("dest: %+v\n", *dest)
+
 		// Turn the destination into a multiaddr.
 		maddr, err := multiaddr.NewMultiaddr(*dest)
 		if err != nil {
 			log.Fatalln(err)
 		}
 
+		fmt.Printf("dest: %+v\n", *dest)
+		fmt.Printf("maddr: %+v\n", maddr)
+
 		// Extract the peer ID from the multiaddr.
 		info, err := peerstore.InfoFromP2pAddr(maddr)
 		if err != nil {
 			log.Fatalln(err)
 		}
+
+		fmt.Printf("dest: %+v\n", *dest)
+		fmt.Printf("maddr: %+v\n", maddr)
+		fmt.Printf("info: %+v\n", info)
 
 		host.SetStreamHandler("/chat/1.0.0", sampleClient.handleStream)
 		fmt.Printf("Run './chat-exec -d /ip4/127.0.0.1/tcp//p2p/%s' on another console.\n", host.ID().Pretty())
@@ -606,9 +656,10 @@ func main() {
 		// This will be used during connection and stream creation by libp2p.
 		host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
 
-		id := host.ID()
+		// id := host.ID()
 		idString := host.ID().Pretty()
-		sampleClient.buildStreams[idString] = id
+		// sampleClient.buildStreams[idString] = id
+		sampleClient.buildStreams[idString] = true
 
 		// x := info.ID.Pretty()
 
@@ -631,10 +682,13 @@ func main() {
 		// Start a stream with the destination.
 		// Multiaddress of the destination peer is fetched from the peerstore using 'peerId'.
 		fmt.Printf("info.ID: %+v\n", info.ID)
+
 		s, err := host.NewStream(context.Background(), info.ID, "/chat/1.0.0")
 		if err != nil {
 			panic(err)
 		}
+
+		// panic(errors.New("asdfaf"))
 
 		sampleClient.testMap = make(map[string]string)
 		sampleClient.rw[s] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
