@@ -13,8 +13,8 @@ debased has no governing authority. The system self-regulates, as long as half o
 The debased system removes the need for trust. There is ZERO chance of down time, data loss, or data breach. Everything stored on the debased system is always available and secure.
 ### Blockchain
 debased uses blockchain technology to store all transactions that occur on the system. This guarantees all transactions on debased are indestructible and immutable.
-### Proof of Work
-The system comes to consensus using the computationally cheap proof of work system instead of the extremely intensive proof of work algorithm. This minimizes energy usage and computational complexity without sacrificing security. This comes at the cost of higher network traffic but this trade off is definitively worthwhile.
+### Proof of Stake
+The system comes to consensus using the computationally cheap proof of stake system instead of the extremely intensive proof of work algorithm. This minimizes energy usage and computational complexity without sacrificing security. This comes at the cost of higher network traffic but this trade off is definitively worthwhile.
 ### Elliptic Curve Signatures
 The core cryptographic strength of debased comes from  the elliptic curve digital signature algorithm. To use, a user generates a private key (from this private key the public key and account ID can be generated). This private key should **NEVER BE SHARED**. This key is used to sign transactions. The signing process creates a sha hash of all the data in the transaction returning two values (r and s). These two values are passed along with the transaction and the public key. These three values can then be used to verify the transaction is from the holder of the private key.
 ### Collateral
