@@ -2,27 +2,11 @@ package main
 
 import (
 	"crypto/sha256"
-	// "encoding/hex"
 	"fmt"
 	"log"
-	//"strings"
 	"strconv"
-
-	// for creating a buffer for ouputting the blockchain
 	"bytes"
 	"github.com/davecgh/go-spew/spew"
-	// "math/big"
-	// for finding the type of an object for testing purposes
-	// "reflect"
-	// Example of reflect:
-	//   tst := "string"
-	//   tst2 := 10
-	//   tst3 := 1.2
-	//
-	//   fmt.Println(reflect.TypeOf(tst))
-	//   fmt.Println(reflect.TypeOf(tst2))
-	//   fmt.Println(reflect.TypeOf(tst3))
-	// "github.com/"
 )
 
 // // -----------------------------------------------------------------------------
@@ -52,22 +36,6 @@ func (block *Block) findLineNumber(transaction []byte) int{
   }
 	return -1
 }
-
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-// --------------------------------CELL LOCATION-----------------------------------
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-// -----------------------------------------------------------------------------
-
-// type CellLocation struct {
-// 	BlockNumber *big.Int
-// 	//position 0 is the first transaction in a block
-// 	Position *big.Int
-// 	//byte position the cell begins at
-// 	PostionInRecord *big.Int
-// }
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -152,13 +120,6 @@ func (blockChain *BlockChain) read(BN int, LN int, byteAdd int) (data []byte) {
 // This function assumes that all fields of the block have been instantiated
 
 func calculateHash(b Block) []byte {
-	// buffer := bytes.Buffer
-	// buffer.WriteString(strconv.Itoa(b.Index))
-	// byte(strconv.Itoa(b.Index))
-	// buffer.WriteString(string(bytes.Join(b.Transactions, []byte(""))))
-	// bytes.Join(b.Transactions, []byte(""))
-	// buffer.WriteString(string(b.PrevPublicKey))
-	// b.PrevPublicKey
 	h := sha256.New()
 	h.Write([]byte(strconv.Itoa(b.Index)))
 	h.Write(bytes.Join(b.Transactions, []byte("")))
@@ -228,9 +189,9 @@ func main() {
 
 	blockChain.addGenesisBlock(initialBlockTransactions)
 
+
 	// Create a second block for testing purposes
 	firstBlock := blockChain.getLatestBlock()
-	// firstBlock is now a pointer to the last block in the block chain now
 
 	// Build the second 2d slice
 	secondBlockTransactions := [][]byte{}
@@ -250,8 +211,8 @@ func main() {
 
 	blockChain.addBlock(newBlock)
 
-	// Create a third block for testing purposes
 
+	// Create a third block for testing purposes
 	secondBlock := blockChain.getLatestBlock()
 
 	thirdBlockTransactions := [][]byte{}
