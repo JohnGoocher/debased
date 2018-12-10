@@ -3,7 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	// "encoding/hex"
-	//"fmt"
+	"fmt"
 	"log"
 	//"strings"
 	"strconv"
@@ -22,7 +22,6 @@ import (
 	//   fmt.Println(reflect.TypeOf(tst))
 	//   fmt.Println(reflect.TypeOf(tst2))
 	//   fmt.Println(reflect.TypeOf(tst3))
-	// TODO: importing other files to work seamlessly below
 	// "github.com/"
 )
 
@@ -43,6 +42,15 @@ type Block struct {
 	PublicKey     []byte
 	PrevPublicKey []byte
 	Index         int
+}
+
+func (block *Block) findLineNumber(transaction []byte) int{
+	for index, val := range block.Transactions {
+    if bytes.Compare(val, transaction) == 0 {
+			return index
+		}
+  }
+	return -1
 }
 
 // -----------------------------------------------------------------------------
@@ -74,18 +82,32 @@ type BlockChain struct {
 	Blocks []*Block
 }
 
+
+func (blockChain *BlockChain) addGenesisBlock(initialBlockTransactions [][]byte) {
+	genesisBlock := &Block{
+		Transactions:  initialBlockTransactions,
+		PublicKey:     []byte{},
+		PrevPublicKey: []byte{},
+		Index:         0,
+	}
+	blockChain.Blocks = append(blockChain.Blocks, genesisBlock)
+}
+
 // "addBlock" Adds a block to the front/head of the Blockchain
-func (blockChain *BlockChain) addBlock(block *Block) {
+func (blockChain *BlockChain) addBlock(newBlock *Block) {
 	// The parameter is a pointer because we are storing a list of pointers
-	blockChain.Blocks = append(blockChain.Blocks, block)
+	latestBlock := blockChain.getLatestBlock()
+
+	if isBlockValid(newBlock, latestBlock) {
+		newBlockchain := append(blockChain.Blocks, newBlock)
+		blockChain.replaceChain(newBlockchain)
+	}
 }
 
-// TODO: FIX THIS LATER. DON'T KNOW HOW TO PROPERLY HANDLE IF blockchain IS EMPTY
-// getLastBlock returns a pointer to the last block in the blockchain
-func (blockChain *BlockChain) getLastBlock() (*Block, error) {
-	return blockChain.Blocks[len(blockChain.Blocks)-1], nil
+// getLatestBlock returns a pointer to the last block in the blockchain
+func (blockChain *BlockChain) getLatestBlock() (*Block) {
+	return blockChain.Blocks[len(blockChain.Blocks)-1]
 }
-
 
 // If the input slice(list) of blocks has a length that is greater
 // than the existent block chain, the existent block chain becomes
@@ -94,6 +116,28 @@ func (blockChain *BlockChain) replaceChain(newBlocks []*Block) {
 	if len(newBlocks) > len(blockChain.Blocks) {
 		blockChain.Blocks = newBlocks
 	}
+}
+
+// The 'write' function writes data on the latest block in the blockchain
+func (blockChain *BlockChain) write(data []byte) (BN int, LN int, byteAdd int){
+	blockToWriteTo := blockChain.getLatestBlock()
+
+
+	blockToWriteTo.Transactions = append(blockToWriteTo.Transactions, data)
+
+	BN = blockToWriteTo.Index
+	LN = blockToWriteTo.findLineNumber(data)
+	byteAdd = 0
+
+	return
+}
+
+
+// The 'read' funtion reads the data stored within the block number and the line
+// number in the block chain
+func (blockChain *BlockChain) read(BN int, LN int, byteAdd int) (data []byte) {
+	data = blockChain.Blocks[BN].Transactions[LN]
+	return
 }
 
 // -----------------------------------------------------------------------------
@@ -107,7 +151,6 @@ func (blockChain *BlockChain) replaceChain(newBlocks []*Block) {
 // Calculates the Hash for the block inserted
 // This function assumes that all fields of the block have been instantiated
 
-// TODO: ensure that we can append byte slices together where record is.
 func calculateHash(b Block) []byte {
 	// buffer := bytes.Buffer
 	// buffer.WriteString(strconv.Itoa(b.Index))
@@ -141,7 +184,7 @@ func createBlock(oldBlock *Block, transactions [][]byte) (*Block, error) {
 
 // Checks if the block that is created is valid to be placed on the blockChain
 // TODO: Ensure that all fields on the block given are instantiated in this function as well?
-func isBlockValid(newBlock, oldBlock Block) bool {
+func isBlockValid(newBlock *Block, oldBlock *Block) bool {
 
 	if bytes.Compare(newBlock.PrevPublicKey, oldBlock.PublicKey) != 0 {
 		return false
@@ -151,7 +194,7 @@ func isBlockValid(newBlock, oldBlock Block) bool {
 		return false
 	}
 
-	if bytes.Compare(calculateHash(newBlock), newBlock.PublicKey) != 0 {
+	if bytes.Compare(calculateHash(*newBlock), newBlock.PublicKey) != 0 {
 		return false
 	}
 
@@ -170,42 +213,29 @@ func main() {
 
 	// Build the initial 2d slice
 	initialBlockTransactions := [][]byte{}
-	firstTransaction := []byte{'a','b', 'c'}
-	secondTransaction := []byte{'d','e','f'}
+	firstTransaction := []byte{'a', 'b', 'c'}
+	secondTransaction := []byte{'d', 'e', 'f'}
 
 	initialBlockTransactions = append(initialBlockTransactions, firstTransaction)
 	initialBlockTransactions = append(initialBlockTransactions, secondTransaction)
 
-
 	// A block contains the Transactions, PublicKey, PrevPublicKey, and Index fields
 	// respectively
-
-	genesisBlock := &Block{
-		Transactions:  initialBlockTransactions,
-		PublicKey:     []byte{},
-		PrevPublicKey: []byte{},
-		Index:         0,
-	}
 
 	blockChain := &BlockChain{
 		Blocks: []*Block{},
 	}
 
-	blockChain.addBlock(genesisBlock)
-
+	blockChain.addGenesisBlock(initialBlockTransactions)
 
 	// Create a second block for testing purposes
-	firstBlock, err := blockChain.getLastBlock()
+	firstBlock := blockChain.getLatestBlock()
 	// firstBlock is now a pointer to the last block in the block chain now
-
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	// Build the second 2d slice
 	secondBlockTransactions := [][]byte{}
-	thirdTransaction := []byte{'g','h','i'}
-	fourthTransaction := []byte{'j','k','l'}
+	thirdTransaction := []byte{'g', 'h', 'i'}
+	fourthTransaction := []byte{'j', 'k', 'l'}
 
 	secondBlockTransactions = append(secondBlockTransactions, thirdTransaction)
 	secondBlockTransactions = append(secondBlockTransactions, fourthTransaction)
@@ -218,17 +248,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-
 	blockChain.addBlock(newBlock)
-
 
 	// Create a third block for testing purposes
 
-	secondBlock, err := blockChain.getLastBlock()
+	secondBlock := blockChain.getLatestBlock()
 
 	thirdBlockTransactions := [][]byte{}
-	fifthTransaction := []byte{'m','n','o'}
-	sixthTransaction := []byte{'p','q','r'}
+	fifthTransaction := []byte{'m', 'n', 'o'}
+	sixthTransaction := []byte{'p', 'q', 'r'}
 
 	thirdBlockTransactions = append(thirdBlockTransactions, fifthTransaction)
 	thirdBlockTransactions = append(thirdBlockTransactions, sixthTransaction)
@@ -236,6 +264,11 @@ func main() {
 	newerBlock, err := createBlock(secondBlock, thirdBlockTransactions)
 
 	blockChain.addBlock(newerBlock)
+
+	// Testing reading/writing
+	blockChain.write([]byte("hey it is me the guy"))
+	blockChain.write([]byte("I am a beast and you are not"))
+
 
 	spew.Dump(blockChain)
 }
