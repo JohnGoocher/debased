@@ -1,4 +1,6 @@
 # debased
+## Overview  
+debased aims to combine the power of blockchain and distributed systems with clean and robust development tools in order to provide a fast, reliable, and secure database solution to everyone.
 ## Philosophy
 Data should be secure, accessible, and uncensored.
 ## The debased System
