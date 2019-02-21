@@ -1,11 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
-	"fmt"
 	"log"
 	"strconv"
-	"bytes"
+
+	// "fmt"
 	"github.com/davecgh/go-spew/spew"
 )
 
@@ -28,12 +29,12 @@ type Block struct {
 	Index         int
 }
 
-func (block *Block) findLineNumber(transaction []byte) int{
+func (block *Block) findLineNumber(transaction []byte) int {
 	for index, val := range block.Transactions {
-    if bytes.Compare(val, transaction) == 0 {
+		if bytes.Compare(val, transaction) == 0 {
 			return index
 		}
-  }
+	}
 	return -1
 }
 
@@ -49,7 +50,6 @@ func (block *Block) findLineNumber(transaction []byte) int{
 type BlockChain struct {
 	Blocks []*Block
 }
-
 
 func (blockChain *BlockChain) addGenesisBlock(initialBlockTransactions [][]byte) {
 	genesisBlock := &Block{
@@ -73,7 +73,7 @@ func (blockChain *BlockChain) addBlock(newBlock *Block) {
 }
 
 // getLatestBlock returns a pointer to the last block in the blockchain
-func (blockChain *BlockChain) getLatestBlock() (*Block) {
+func (blockChain *BlockChain) getLatestBlock() *Block {
 	return blockChain.Blocks[len(blockChain.Blocks)-1]
 }
 
@@ -87,9 +87,8 @@ func (blockChain *BlockChain) replaceChain(newBlocks []*Block) {
 }
 
 // The 'write' function writes data on the latest block in the blockchain
-func (blockChain *BlockChain) write(data []byte) (BN int, LN int, byteAdd int){
+func (blockChain *BlockChain) write(data []byte) (BN int, LN int, byteAdd int) {
 	blockToWriteTo := blockChain.getLatestBlock()
-
 
 	blockToWriteTo.Transactions = append(blockToWriteTo.Transactions, data)
 
@@ -99,7 +98,6 @@ func (blockChain *BlockChain) write(data []byte) (BN int, LN int, byteAdd int){
 
 	return
 }
-
 
 // The 'read' funtion reads the data stored within the block number and the line
 // number in the block chain
@@ -189,7 +187,6 @@ func main() {
 
 	blockChain.addGenesisBlock(initialBlockTransactions)
 
-
 	// Create a second block for testing purposes
 	firstBlock := blockChain.getLatestBlock()
 
@@ -211,7 +208,6 @@ func main() {
 
 	blockChain.addBlock(newBlock)
 
-
 	// Create a third block for testing purposes
 	secondBlock := blockChain.getLatestBlock()
 
@@ -229,7 +225,6 @@ func main() {
 	// Testing reading/writing
 	blockChain.write([]byte("hey it is me the guy"))
 	blockChain.write([]byte("I am a beast and you are not"))
-
 
 	spew.Dump(blockChain)
 }
