@@ -20,10 +20,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// createAcctCmd represents the createAcct command
-var createAcctCmd = &cobra.Command{
-	Use:   "createAcct",
-	Short: "Creates an account on the debased system",
+// checkAcctBalanceCmd represents the checkAcctBalance command
+var checkAcctBalanceCmd = &cobra.Command{
+	Use:   "checkAcctBalance",
+	Short: "Checks the account balance on this account",
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
 
@@ -31,20 +31,20 @@ var createAcctCmd = &cobra.Command{
 	// This application is a tool to generate the needed files
 	// to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("createAcct called")
+		fmt.Println("checkAcctBalance called")
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(createAcctCmd)
+	rootCmd.AddCommand(checkAcctBalanceCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// createAcctCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// checkAcctBalanceCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// createAcctCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// checkAcctBalanceCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
