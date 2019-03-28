@@ -206,6 +206,9 @@ type Transactions struct {
 
 //DebasedSystem : model for the nodes' entire view of the debased pos/blockchain system
 type DebasedSystem struct {
+	//this hook is so tragicly dumb
+  ReceievedMsgs           [][]byte
+
 	PrivateKeysFromSession  []*ecdsa.PrivateKey
 	// TODO: Integrate with blockchain
 	CurrentBlockHeight      big.Int

@@ -1,49 +1,15 @@
-/*
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2014 Juan Batiz-Benet
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- *
- * This program demonstrate a simple chat application using p2p communication.
- *
- */
-
 package main
 
 import (
 	"bufio"
 	"context"
-	"crypto/rand"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"log"
-	mrand "math/rand"
 	"os"
 	"strings"
 
-	"github.com/libp2p/go-libp2p"
-
-	"github.com/libp2p/go-libp2p-crypto"
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-net"
 	"github.com/libp2p/go-libp2p-peer"
@@ -61,20 +27,24 @@ type firstStream struct {
 	origin    bool
 }
 
+//Client contains pertinate info to the nodes networking
 type Client struct {
-	testMap map[string]string
+	//this hook is so tragicly dumb
+  MsgsToBeSent	[][]byte
+
+	testMap 			map[string]string
 
 	// rw map[peer.ID]*bufio.ReadWriter
-	rw map[net.Stream]*bufio.ReadWriter
+	rw 						map[net.Stream]*bufio.ReadWriter
 
 	// streams map[net.Stream]net.Stream
 	// Streams map[string]net.Stream
-	Streams map[string]net.Stream
+	Streams 			map[string]net.Stream
 	// Streams map[string]interface{}
 
 	// buildStreams map[string]bool
-	buildStreams map[string]stream
-	streamPorts  map[string]string
+	buildStreams 	map[string]stream
+	streamPorts		map[string]string
 	// buildStreams map[string]firstStream
 
 	host host.Host
@@ -422,10 +392,17 @@ func (c *Client) buildTestMaps(incomingWrapper jsonWrapper) {
 	fmt.Println("buildTestMaps")
 	fmt.Println("BEFORE")
 	fmt.Printf("c.testMap: %+v\n", c.testMap)
+
+	//****** added empty testMap to avoid resending data
+	c.testMap = make(map[string]string)
+
 	if err := json.Unmarshal(incomingWrapper.Object, &c.testMap); err != nil {
 		fmt.Println("Cannot unmarshal incomingWrapper.Object for c.testMap")
 		panic(err)
 	}
+
+	fmt.Println("Got something in reset map, launch hook into pos here")
+
 	fmt.Println("AFTER")
 	fmt.Printf("c.testMap: %+v\n", c.testMap)
 }
@@ -625,6 +602,10 @@ func (c *Client) writeExampleData(s net.Stream) {
 
 		fmt.Println("count: %i", count)
 		fmt.Print("before> ")
+
+		//this is where things come in to get packaged and sent
+		fmt.Println("add hook from pos here")
+
 		data, err := stdReader.ReadString('\n')
 		fmt.Printf("WRITING: %+v\n", s)
 		// fmt.Println("AFTER READSTRING")
@@ -633,6 +614,9 @@ func (c *Client) writeExampleData(s net.Stream) {
 		fmt.Println("WHAT")
 		fmt.Printf("c.testMap before: %+v\n", c.testMap)
 		fmt.Printf("data: %+v\n", data)
+		//****** added empty testMap to avoid resending data
+		c.testMap = make(map[string]string)
+
 		c.testMap[data] = data
 		fmt.Printf("c.testMap after: %+v\n", c.testMap)
 		// fmt.Println("AFTER TESTMAP")
@@ -703,237 +687,3 @@ func (c *Client) writeExampleData(s net.Stream) {
 // 	}
 
 // }
-
-func main() {
-	fmt.Println("START OF MAIN FUNCTION")
-	sourcePort := flag.Int("sp", 0, "Source port number")
-	dest := flag.String("d", "", "Destination multiaddr string")
-	help := flag.Bool("help", false, "Display help")
-	debug := flag.Bool("debug", false, "Debug generates the same node ID on every execution")
-	// testMap := make(map[string]string)
-	sampleClient := &Client{context: context.Background()}
-
-	flag.Parse()
-
-	if *help {
-		fmt.Printf("This program demonstrates a simple p2p chat application using libp2p\n\n")
-		fmt.Println("Usage: Run './chat-exec -sp <SOURCE_PORT>' where <SOURCE_PORT> can be any port number.")
-		fmt.Println("Now run './chat-exec -d <MULTIADDR>' where <MULTIADDR> is multiaddress of previous listener host.")
-
-		os.Exit(0)
-	}
-
-	// If debug is enabled, use a constant random source to generate the peer ID. Only useful for debugging,
-	// off by default. Otherwise, it uses rand.Reader.
-	var r io.Reader
-	if *debug {
-		// Use the port number as the randomness source.
-		// This will always generate the same host ID on multiple executions, if the same port number is used.
-		// Never do this in production code.
-		r = mrand.New(mrand.NewSource(int64(*sourcePort)))
-	} else {
-		r = rand.Reader
-	}
-
-	// Creates a new RSA key pair for this host.
-	prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, r)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("sourcePort: %+v\n", *sourcePort)
-	// 0.0.0.0 will listen on any interface device.
-	sourceMultiAddr, _ := multiaddr.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", *sourcePort))
-
-	// libp2p.New constructs a new libp2p Host.
-	// Other options can be added here.
-	host, err := libp2p.New(
-		sampleClient.context,
-		libp2p.ListenAddrs(sourceMultiAddr),
-		libp2p.Identity(prvKey),
-	)
-
-	sampleClient.host = host
-	// sampleClient.streams = make(map[peer.ID]net.Stream)
-	// sampleClient.rw = make(map[peer.ID]*bufio.ReadWriter)
-
-	// sampleClient.Streams = make(map[string]interface{})
-	sampleClient.Streams = make(map[string]net.Stream)
-	// sampleClient.buildStreams = make(map[string]bool)
-	sampleClient.buildStreams = make(map[string]stream)
-
-	sampleClient.rw = make(map[net.Stream]*bufio.ReadWriter)
-	sampleClient.streamPorts = make(map[string]string)
-
-	fmt.Println("HOST.ID().PRETTY()")
-	fmt.Println("HOST.ID().PRETTY()")
-	fmt.Printf("%+v\n", host.ID().Pretty())
-	fmt.Println("HOST.ID().PRETTY()")
-	fmt.Println("HOST.ID().PRETTY()")
-
-	if err != nil {
-		panic(err)
-	}
-
-	if *dest == "" {
-		// Set a function as stream handler.
-		// This function is called when a peer connects, and starts a stream with this protocol.
-		// Only applies on the receiving side.
-		host.SetStreamHandler("/chat/1.0.0", sampleClient.handleStream)
-		// id := host.ID()
-		idString := host.ID().Pretty()
-		// sampleClient.buildStreams[idString] = id
-		// sampleClient.buildStreams[idString] = stream{connected: true}
-		// sampleClient.buildStreams[idString] = firstStream{
-		// 	connected: true,
-		// 	origin:    true,
-		// }
-
-		fmt.Printf("sampleClient.buildStreams: %+v\n", sampleClient.buildStreams)
-
-		// Let's get the actual TCP port from our listen multiaddr, in case we're using 0 (default; random available port).
-		var port string
-		for _, la := range host.Network().ListenAddresses() {
-			if p, err := la.ValueForProtocol(multiaddr.P_TCP); err == nil {
-				port = p
-				break
-			}
-		}
-
-		if port == "" {
-			panic("was not able to find actual local port")
-		}
-
-		sampleClient.buildStreams[idString] = stream{
-			connected: true,
-			port:      port,
-		}
-
-		fmt.Printf("sampleClient.buildStreams: %+v\n", sampleClient.buildStreams)
-
-		sampleClient.streamPorts[idString] = port
-
-		fmt.Printf("Run './chat-exec -d /ip4/127.0.0.1/tcp/%v/p2p/%s' on another console.\n", port, host.ID().Pretty())
-		fmt.Println("You can replace 127.0.0.1 with public IP as well.")
-		fmt.Printf("\nWaiting for incoming connection\n\n")
-
-		// Hang forever
-		<-make(chan struct{})
-	} else {
-		fmt.Println("This node's multiaddresses:")
-		for _, la := range host.Addrs() {
-			fmt.Printf(" - %v\n", la)
-		}
-		fmt.Println()
-
-		fmt.Printf("dest: %+v\n", *dest)
-
-		// Turn the destination into a multiaddr.
-		maddr, err := multiaddr.NewMultiaddr(*dest)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		fmt.Printf("dest: %+v\n", *dest)
-		fmt.Printf("maddr: %+v\n", maddr)
-
-		// Extract the peer ID from the multiaddr.
-		info, err := peerstore.InfoFromP2pAddr(maddr)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		fmt.Printf("dest: %+v\n", *dest)
-		fmt.Printf("maddr: %+v\n", maddr)
-		fmt.Printf("info: %+v\n", info)
-
-		host.SetStreamHandler("/chat/1.0.0", sampleClient.handleStream)
-
-		// Let's get the actual TCP port from our listen multiaddr, in case we're using 0 (default; random available port).
-		var port string
-		for _, la := range host.Network().ListenAddresses() {
-			if p, err := la.ValueForProtocol(multiaddr.P_TCP); err == nil {
-				port = p
-				break
-			}
-		}
-
-		if port == "" {
-			panic("was not able to find actual local port")
-		}
-
-		fmt.Printf("Run './chat-exec -d /ip4/127.0.0.1/tcp/%v/p2p/%s' on another console.\n", port, host.ID().Pretty())
-
-		// fmt.Printf("Run './chat-exec -d /ip4/127.0.0.1/tcp//p2p/%s' on another console.\n", host.ID().Pretty())
-
-		// Add the destination's peer multiaddress in the peerstore.
-		// This will be used during connection and stream creation by libp2p.
-		host.Peerstore().AddAddrs(info.ID, info.Addrs, peerstore.PermanentAddrTTL)
-
-		nodeAddress := strings.Split(*dest, "/")
-		nodeID := nodeAddress[len(nodeAddress)-1]
-
-		// id := host.ID()
-		idString := host.ID().Pretty()
-		// sampleClient.buildStreams[idString] = id
-		sampleClient.streamPorts[idString] = port
-		// sampleClient.buildStreams[idString] = true
-		sampleClient.buildStreams[idString] = stream{connected: true, port: port}
-		// sampleClient.buildStreams[nodeID] = true
-		reassign := sampleClient.buildStreams[nodeID]
-		reassign.connected = true
-		sampleClient.buildStreams[nodeID] = reassign
-
-		// x := info.ID.Pretty()
-
-		// y, err := peer.IDB58Decode(x)
-
-		// if err != nil {
-		// 	fmt.Println("ARE YOU THE NEW PANIC???")
-		// 	panic(err)
-		// }
-
-		// fmt.Printf("x: %+v\n", x)
-		// fmt.Printf("y: %+v\n", y)
-
-		fmt.Printf("info.ID.String(): %+v\n", info.ID.String())
-		fmt.Printf("info.ID: %+v\n", info.ID)
-
-		// MAYBE TRY USING A SETTTTTTT ORRR  A A A A A A STIRNGGGGG
-		fmt.Printf("sampleClient.buildStreams: %+v\n", sampleClient.buildStreams)
-
-		// Start a stream with the destination.
-		// Multiaddress of the destination peer is fetched from the peerstore using 'peerId'.
-		fmt.Printf("info.ID: %+v\n", info.ID)
-
-		s, err := host.NewStream(sampleClient.context, info.ID, "/chat/1.0.0")
-		if err != nil {
-			panic(err)
-		}
-
-		// panic(errors.New("asdfaf"))
-
-		sampleClient.testMap = make(map[string]string)
-		sampleClient.rw[s] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
-
-		// sampleClient := &Client{
-		// 	testMap: make(map[string]string),
-		// 	rw:      rw,
-		// }
-
-		// testMap := make(map[string]string)
-
-		go sampleClient.readExampleData(s)
-		go sampleClient.writeExampleData(s)
-
-		fmt.Println("LET'S CHECK OUT THOSE STREAMS")
-		fmt.Println("%+v\n", sampleClient.Streams)
-
-		// Create a thread to read and write data.
-		// go writeData(rw)
-		// go readData(rw)
-
-		// Hang forever.
-		select {}
-	}
-}
