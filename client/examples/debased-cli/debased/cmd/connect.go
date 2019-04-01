@@ -20,20 +20,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// createTableCmd represents the createTable command
-var createTableCmd = &cobra.Command{
-	Use:   "createTable [entity name] [attributes...] [max payment]",
-	Short: "Creates a table on the debased system",
-	// Args: func(cmd *cobra.Command, args []string) error {
-	// 	if len(args) < 3 {
-	// 		// debased createTable pets cats 40
-	// 		return errors.New("requires an entity-name, attribute names[...], and max cost allowed arguments")
-	// 	}
-	// 	if myapp.IsValidColor(args[0]) {
-	// 		return nil
-	// 	}
-	// 	return fmt.Errorf("invalid color specified: %s", args[0])
-	// },
+// connectCmd represents the connect command
+var connectCmd = &cobra.Command{
+	Use:   "connect [ip address]",
+	Short: "Connects to the debased network",
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
 
@@ -41,20 +31,20 @@ var createTableCmd = &cobra.Command{
 	// This application is a tool to generate the needed files
 	// to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("createTable called")
+		fmt.Println("connect called")
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(createTableCmd)
+	rootCmd.AddCommand(connectCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// createTableCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// connectCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// createTableCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// connectCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
