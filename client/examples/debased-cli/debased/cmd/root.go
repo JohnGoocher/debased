@@ -27,7 +27,7 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "debased [OPTIONS] COMMAND [ARG...]",
+	Use:   "debased COMMAND [ARG...]",
 	Short: "The debased command line interface",
 	// Uncomment the following line if your bare application
 	// has an action associated with it:

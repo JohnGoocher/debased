@@ -22,7 +22,7 @@ import (
 
 // addDataCmd represents the addData command
 var addDataCmd = &cobra.Command{
-	Use:   "addData",
+	Use:   "addData [<table entity name>] [<table attributes...>] INSERT [<table values...>] [<max payment allowed>]",
 	Short: "Adds data to a table",
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:

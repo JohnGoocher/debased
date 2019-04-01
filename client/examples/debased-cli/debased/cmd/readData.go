@@ -22,7 +22,7 @@ import (
 
 // readDataCmd represents the readData command
 var readDataCmd = &cobra.Command{
-	Use:   "readData",
+	Use:   "readData [<table entity name>] [<table attribute>]",
 	Short: "Reads data from a table",
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
