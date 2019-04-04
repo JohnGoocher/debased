@@ -22,8 +22,8 @@ import (
 
 // createTableCmd represents the createTable command
 var createTableCmd = &cobra.Command{
-	Use:   "createTable [<table entity name>] [<table attributes...>] [<max payment allowed>]",
-	Short: "Creates a table on the debased system",
+	Use:   "createTable <table name> {<table_column> <data_type>}... <max payment allowed>",
+	Short: "Creates a table on the debased network",
 	// Args: func(cmd *cobra.Command, args []string) error {
 	// 	if len(args) < 3 {
 	// 		// debased createTable pets cats 40

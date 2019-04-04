@@ -16,14 +16,61 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
 
+// finds the position of the string in the slice of strings.
+// Returns -1 if the string is not found.
+
+func pos(s []string, value string) int {
+	for i, v := range s {
+		if value == v {
+			return i
+		}
+	}
+	return -1
+}
+
 // addDataCmd represents the addData command
 var addDataCmd = &cobra.Command{
-	Use:   "addData [<table entity name>] [<table attributes...>] INSERT [<table values...>] [<max payment allowed>]",
+	Use:   "addData INTO <table_name> COLUMNS <column_name(s)>... VALUES <value(s)>... <max_payment_allowed>",
 	Short: "Adds data to a table",
+	Args: func(cmd *cobra.Command, args []string) error {
+		// Identify all the args that are <column_names> in an arg
+		minNArguments := 7
+		tableNameArg := args[1]
+		maxPayment := args[len(args)-1]
+		columnNames := args[pos(args, tableNameArg)+1 : pos(args, "VALUES")]
+		// values := args[pos(args, "VALUES")+1 : pos(args, maxPayment)]
+
+		if len(args) < 7 {
+			return fmt.Errorf("Requires a minimum amount of %d arguments", minNArguments)
+		}
+		if args[0] != "INTO" {
+			return fmt.Errorf("Requires the 'INTO' argument as the first argument instead of: %s", args[0])
+		}
+
+		// Check to see if table_name exists in metadata
+
+		if args[2] != "COLUMNS" {
+			return fmt.Errorf("Requires the 'COLUMNS' argument as the next argument instead of: %s", args[2])
+		}
+
+		// Check to see if the columns in <columnNames> are in the metadata
+
+		if args[3+len(columnNames)] == "VALUES" {
+			return fmt.Errorf("Requires the 'VALUES' argument as the next argument instead of: %s", args[3+len(columnNames)])
+		}
+
+		// Check if the values in the values slice are located in the metadata
+
+		if _, err := strconv.Atoi(maxPayment); err != nil {
+			return fmt.Errorf("Invalid argument: %s requires <max_payment_allowed> (int)", args[len(args)-1])
+		}
+		return nil
+	},
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
 

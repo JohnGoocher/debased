@@ -23,7 +23,7 @@ import (
 // createAcctCmd represents the createAcct command
 var createAcctCmd = &cobra.Command{
 	Use:   "createAcct",
-	Short: "Creates an account on the debased system",
+	Short: "Creates an account on the debased network",
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
 
