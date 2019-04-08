@@ -33,6 +33,40 @@ func pos(s []string, value string) int {
 	return -1
 }
 
+func contains(s []string, value string) bool {
+	for _, v := range s {
+		if value == v {
+			return true
+		}
+	}
+	return false
+}
+
+// func isValidKeyword(value string) bool {
+// 	if value == "INTO" ||  {
+// 		return fmt.Errorf("Valid keyword ", value)
+// 	}
+// }
+
+func hasValidKeywords(s []string) bool {
+	if !contains(s, "INTO") {
+		return false
+	}
+	if !contains(s, "COLUMNS") {
+		return false
+	}
+	if !contains(s, "VALUES") {
+		return false
+	}
+	return true
+}
+
+func areColumnsValuesSameSize(s []string) bool {
+	columnSize := pos(s, "VALUES") - pos(s, "COLUMNS") + 1
+	valueSize := len(s) - 1 - pos(s, "VALUES") + 1
+	return columnSize == valueSize
+}
+
 // addDataCmd represents the addData command
 var addDataCmd = &cobra.Command{
 	Use:   "addData INTO <table_name> COLUMNS <column_name(s)>... VALUES <value(s)>... <max_payment_allowed>",
@@ -40,35 +74,51 @@ var addDataCmd = &cobra.Command{
 	Args: func(cmd *cobra.Command, args []string) error {
 		// Identify all the args that are <column_names> in an arg
 		minNArguments := 7
+
+		if len(args) < minNArguments {
+			return fmt.Errorf("Requires a minimum amount of %d arguments", minNArguments)
+		}
+
 		tableNameArg := args[1]
 		maxPayment := args[len(args)-1]
+
+		if !hasValidKeywords(args) {
+			return fmt.Errorf("Missing required argument(s): 'INTO', 'COLUMNS', or 'VALUES'")
+		}
+
 		columnNames := args[pos(args, tableNameArg)+1 : pos(args, "VALUES")]
 		// values := args[pos(args, "VALUES")+1 : pos(args, maxPayment)]
 
-		if len(args) < 7 {
-			return fmt.Errorf("Requires a minimum amount of %d arguments", minNArguments)
-		}
 		if args[0] != "INTO" {
-			return fmt.Errorf("Requires the 'INTO' argument as the first argument instead of: %s", args[0])
+			return fmt.Errorf("Requires the 'INTO' (string) argument as the first argument instead of: '%s'", args[0])
 		}
 
 		// Check to see if table_name exists in metadata
 
 		if args[2] != "COLUMNS" {
-			return fmt.Errorf("Requires the 'COLUMNS' argument as the next argument instead of: %s", args[2])
+			return fmt.Errorf("Requires the 'COLUMNS' (string) argument as the next required argument instead of: '%s'", args[2])
 		}
 
 		// Check to see if the columns in <columnNames> are in the metadata
 
 		if args[3+len(columnNames)] == "VALUES" {
-			return fmt.Errorf("Requires the 'VALUES' argument as the next argument instead of: %s", args[3+len(columnNames)])
+			return fmt.Errorf("Requires the 'VALUES' (string) argument as the next required argument instead of: '%s'", args[3+len(columnNames)])
 		}
 
-		// Check if the values in the values slice are located in the metadata
+		if !areColumnsValuesSameSize(args) {
+			return fmt.Errorf("Requires the same number of column and value names after 'COLUMNS' and 'VALUES'")
+		}
+
+		// Check if the values in the <values> slice (commented above) are located in the metadata
 
 		if _, err := strconv.Atoi(maxPayment); err != nil {
-			return fmt.Errorf("Invalid argument: %s requires <max_payment_allowed> (int)", args[len(args)-1])
+			return fmt.Errorf("Requires <max_payment_allowed> (int) argument instead of: '%s'", args[len(args)-1])
 		}
+
+		// Check if can give that amount of payment (account balance is not enough or something)
+
+		// Check that for every column after COLUMNS there should be a value after VALUES
+
 		return nil
 	},
 	// 	Long: `A longer description that spans multiple lines and likely contains examples

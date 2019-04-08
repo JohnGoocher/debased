@@ -16,24 +16,34 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
 
 // createTableCmd represents the createTable command
 var createTableCmd = &cobra.Command{
-	Use:   "createTable <table name> {<table_column> <data_type>}... <max payment allowed>",
+	Use:   "createTable <table name> {<column_name> <data_type>}... <max payment allowed>",
 	Short: "Creates a table on the debased network",
-	// Args: func(cmd *cobra.Command, args []string) error {
-	// 	if len(args) < 3 {
-	// 		// debased createTable pets cats 40
-	// 		return errors.New("requires an entity-name, attribute names[...], and max cost allowed arguments")
-	// 	}
-	// 	if myapp.IsValidColor(args[0]) {
-	// 		return nil
-	// 	}
-	// 	return fmt.Errorf("invalid color specified: %s", args[0])
-	// },
+	Args: func(cmd *cobra.Command, args []string) error {
+		// example usage: 'debased createTable pets cats 40'
+		minNArguments := 4
+
+		if len(args) < minNArguments {
+			return fmt.Errorf("Requires a minimum amount of %d arguments", minNArguments)
+		}
+
+		// tableName := args[1]
+		maxPayment := args[len(args)-1]
+
+		if _, err := strconv.Atoi(maxPayment); err != nil {
+			return fmt.Errorf("Requires <max_payment_allowed> (int) argument instead of: '%s'", args[len(args)-1])
+		}
+
+		// columnNames := args[1:len(args):2]
+
+		return nil
+	},
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
 

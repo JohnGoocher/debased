@@ -35,7 +35,7 @@ var readDataCmd = &cobra.Command{
 		}
 
 		if args[0] != "COLUMNS" {
-			return fmt.Errorf("Requires the 'COLUMNS' argument as the first argument instead of: %s", args[0])
+			return fmt.Errorf("Reqcuires the 'COLUMNS' argument as the first argument instead of: %s", args[0])
 		}
 
 		// Check to see if the columns in <columnNames> are in the metadata
