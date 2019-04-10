@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -22,8 +23,16 @@ import (
 
 // connectCmd represents the connect command
 var connectCmd = &cobra.Command{
-	Use:   "connect [<ip address>]",
+	Use:   "connect <ip address>",
 	Short: "Connects to the debased network",
+	Args: func(cmd *cobra.Command, args []string) error {
+		if len(args) > 1 || len(args) < 1 {
+			return errors.New("<ip addresss> should be the only argument")
+		}
+
+		//Validate ip
+		return nil
+	},
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
 

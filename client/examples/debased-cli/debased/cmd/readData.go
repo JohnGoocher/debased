@@ -15,23 +15,31 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
 // readDataCmd represents the readData command
 var readDataCmd = &cobra.Command{
-	Use:   "readData COLUMNS <column_name(s)>... FROM <table_name> WHERE <condition>",
+	Use:   "readData COLUMNS <column_name(s)>... FROM <table_name> [WHERE] [<condition>] {[AND|OR] [<condition>]}...",
 	Short: "Reads data from a table",
 	Args: func(cmd *cobra.Command, args []string) error {
-		minNArguments := 6
+		minRequiredArguments := 4
+
+		if len(args) < minRequiredArguments {
+			return fmt.Errorf("Requires a minimum amount of %d arguments", minRequiredArguments)
+		}
+
+		columnNames := args[pos(args, "COLUMNS")+1 : pos(args, "FROM")]
+		// Check to see if the <table_name> is in the metadata
 		// tableNameArg := args[pos(args, "FROM")+1]
 		// conditionArg := args[pos(args, "WHERE")+1]
-		columnNames := args[pos(args, "COLUMNS")+1 : pos(args, "FROM")]
 
-		if len(args) < minNArguments {
-			return fmt.Errorf("Requires a minimum amount of %d arguments", minNArguments)
+		if len(args) < minRequiredArguments {
+			return fmt.Errorf("Requires a minimum amount of %d arguments", minRequiredArguments)
 		}
 
 		if args[0] != "COLUMNS" {
@@ -44,17 +52,34 @@ var readDataCmd = &cobra.Command{
 			return fmt.Errorf("Requires the 'FROM' argument as the next argument instead of: %s", args[1+len(columnNames)])
 		}
 
-		// Check to see if the <table_name> is in the metadata
+		// tableName := args[pos(args, "FROM")+1]
 
-		if args[3+len(columnNames)] != "WHERE" {
-			return fmt.Errorf("Requires the 'WHERE' argument as the next argument instead of: %s", args[3+len(columnNames)])
+		// check to see if the tableName is in the metadata
+
+		// Checks to see if the args include the WHERE statement
+
+		if len(args) > 3+len(columnNames) {
+			maxOptionalArgs := 2
+			fmt.Println("The length of the args is into the optional length")
+
+			if args[3+len(columnNames)] != "WHERE" {
+				return fmt.Errorf("Requires the 'WHERE' argument as the next optional argument instead of: %s", args[3+len(columnNames)])
+			}
+
+			if len(args) < 3+len(columnNames)+maxOptionalArgs {
+				return fmt.Errorf("Requires a condition argument as the next optional argument instead of: %s", args[3+len(columnNames)])
+			}
+
+			condition := args[pos(args, "WHERE")+1]
+
+			fmt.Println(condition)
+
+			// Checks to see if a valid condition:
+			if !strings.Contains(condition, "=") || !strings.Contains(condition, ">") || !strings.Contains(condition, "<") {
+				return errors.New("Requires an '=', '>', or '<' operator in the condition")
+			}
 		}
 
-		// Checks to see if a valid condition:
-		// if cmd.pos(args, "") == -1 {
-		// 	return errors.New("Requires an '=' argument as the next argument instead of: %s", args[3+len(columnNames)])
-		// 	return errors.New("Needs an ")
-		// }
 		return nil
 	},
 	// 	Long: `A longer description that spans multiple lines and likely contains examples

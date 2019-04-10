@@ -73,10 +73,10 @@ var addDataCmd = &cobra.Command{
 	Short: "Adds data to a table",
 	Args: func(cmd *cobra.Command, args []string) error {
 		// Identify all the args that are <column_names> in an arg
-		minNArguments := 7
+		minRequiredArguments := 7
 
-		if len(args) < minNArguments {
-			return fmt.Errorf("Requires a minimum amount of %d arguments", minNArguments)
+		if len(args) < minRequiredArguments {
+			return fmt.Errorf("Requires a minimum amount of %d arguments", minRequiredArguments)
 		}
 
 		tableNameArg := args[1]
@@ -116,8 +116,6 @@ var addDataCmd = &cobra.Command{
 		}
 
 		// Check if can give that amount of payment (account balance is not enough or something)
-
-		// Check that for every column after COLUMNS there should be a value after VALUES
 
 		return nil
 	},

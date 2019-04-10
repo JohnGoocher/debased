@@ -27,20 +27,40 @@ var createTableCmd = &cobra.Command{
 	Short: "Creates a table on the debased network",
 	Args: func(cmd *cobra.Command, args []string) error {
 		// example usage: 'debased createTable pets cats 40'
-		minNArguments := 4
+		minRequiredArguments := 4
+		maxPayment := args[len(args)-1]
+		var columnNames []string
+		var dataTypeValues []string
 
-		if len(args) < minNArguments {
-			return fmt.Errorf("Requires a minimum amount of %d arguments", minNArguments)
+		if len(args) < minRequiredArguments {
+			return fmt.Errorf("Requires a minimum amount of %d arguments", minRequiredArguments)
+		}
+
+		if _, err := strconv.Atoi(maxPayment); err != nil {
+			return fmt.Errorf("Requires <max_payment_allowed> (int) as last argument instead of: '%s'", args[len(args)-1])
 		}
 
 		// tableName := args[1]
-		maxPayment := args[len(args)-1]
 
-		if _, err := strconv.Atoi(maxPayment); err != nil {
-			return fmt.Errorf("Requires <max_payment_allowed> (int) argument instead of: '%s'", args[len(args)-1])
+		// check if <tableName> already exists as a table in the network or not
+
+		for i := 1; i < len(args)-1; i += 2 {
+			columnNames = append(columnNames, args[i])
 		}
 
-		// columnNames := args[1:len(args):2]
+		for i := 2; i < len(args)-1; i += 2 {
+			if args[i] == "varchar" || args[i] == "int" {
+				dataTypeValues = append(dataTypeValues, args[i])
+			} else {
+				return fmt.Errorf("Requires data types be of type 'varchar' or 'int' and not: '%s'", args[i])
+			}
+		}
+
+		if len(columnNames) != len(dataTypeValues) {
+			return fmt.Errorf("Requires same number of column names and data types in form {<column_name> <data_type>}")
+		}
+
+		// Check if can give that amount of payment (account balance is not enough or something)
 
 		return nil
 	},
