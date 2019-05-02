@@ -30,7 +30,8 @@ type firstStream struct {
 //Client contains pertinate info to the nodes networking
 type Client struct {
 	//this hook is so tragicly dumb
-  MsgsToBeSent	[][]byte
+  MsgsToBeSent	[]string
+	CLToBeSent		[]string
 
 	testMap 			map[string]string
 
@@ -168,6 +169,7 @@ func (c *Client) handleStream(s net.Stream) {
 
 	go c.readExampleData(s)
 	go c.writeExampleData(s)
+	go c.checkCL(s)
 
 	fmt.Printf("%+v\n", c.Streams)
 	fmt.Printf("%+v\n", s)
@@ -272,9 +274,10 @@ func (c *Client) readExampleData(s net.Stream) {
 		fmt.Println("BEFORE STR")
 		// str, err := c.rw[s].ReadSlice('}')
 		// str, err := c.rw[s].ReadSlice('\x00')
+		fmt.Println("Should hold here")
 		wrapperBytes, err := c.rw[s].ReadSlice('}')
 		// str, err := c.rw[s].ReadSlice('\n')
-
+		fmt.Println("Should resume here")
 		fmt.Println("AFTER READSLICE")
 		if err != nil {
 			fmt.Println("READSLICE PANIC")
@@ -589,14 +592,41 @@ func (c *Client) buildNewStreams(incomingWrapper jsonWrapper) {
 			c.rw[s] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 			go c.readExampleData(s)
 			go c.writeExampleData(s)
+			go c.checkCL(s)
 		}
 	}
 	// panic(errors.New("stahp"))
 }
 
+func (c *Client) checkCL(s net.Stream) {
+	fmt.Println("Running checkCL()")
+	fmt.Println("Running checkCL()")
+	fmt.Println("Running checkCL()")
+	fmt.Println("Running checkCL()")
+	fmt.Println("Running checkCL()")
+	fmt.Println("Running checkCL()")
+	fmt.Println("Running checkCL()")
+	fmt.Println("Running checkCL()")
+	fmt.Println("Running checkCL()")
+	fmt.Println("Running checkCL()")
+	stdReader := bufio.NewReader(os.Stdin)
+	for{
+		data, err := stdReader.ReadString('\n')
+		fmt.Println("data")
+		fmt.Println(data)
+		if err != nil {
+			fmt.Println("JSON.MARSHALL PANIC")
+			panic(err)
+		}
+		c.CLToBeSent = append(c.CLToBeSent, data)
+	}
+}
+
 func (c *Client) writeExampleData(s net.Stream) {
 	// testMap := make(map[string]string)
-	stdReader := bufio.NewReader(os.Stdin)
+
+	//PLEASE DONT LOSE
+	//stdReader := bufio.NewReader(os.Stdin)
 	count := 0
 	for {
 
@@ -606,7 +636,56 @@ func (c *Client) writeExampleData(s net.Stream) {
 		//this is where things come in to get packaged and sent
 		fmt.Println("add hook from pos here")
 
-		data, err := stdReader.ReadString('\n')
+		//SO IMPORTANT DONT LOSE
+		//data, err := stdReader.ReadString('\n')
+
+		//NEW SHIT
+		//v, err := stdReader.Peek(1)
+		//fmt.Println("_")
+		//fmt.Println(v)
+		// if the reader is empty and MsgsToBeSent empty wait
+		//NOT ENTERING THIS LOOP INSTEAD ALWAYS INTERING if err == nill
+		//fmt.Println("err")
+		//fmt.Println(err)
+		//fmt.Println("len(c.MsgsToBeSent)")
+		//fmt.Println(len(c.MsgsToBeSent))
+		for len(c.CLToBeSent) == 0 && len(c.MsgsToBeSent) == 0 {
+			// TODO: Make less comput intensive. constant looping is taxing
+			// using bufferedReaders for CLToBeSent and MsgsToBeSent along with 2 go routines should sork
+			continue
+		}
+		data := ""
+		if len(c.CLToBeSent) != 0{
+			//data, _ = stdReader.ReadString('\n')
+			fmt.Println("len(c.CLToBeSent)")
+			fmt.Println("len(c.CLToBeSent)")
+			fmt.Println("len(c.CLToBeSent)")
+			fmt.Println("len(c.CLToBeSent)")
+			fmt.Println("len(c.CLToBeSent)")
+			fmt.Println("len(c.CLToBeSent)")
+			fmt.Println("len(c.CLToBeSent)")
+			fmt.Println(len(c.CLToBeSent))
+			data = c.CLToBeSent[0]
+			c.CLToBeSent = append(c.CLToBeSent[:0], c.CLToBeSent[0+1:]...)
+			fmt.Println("read from cmd line")
+		} else {
+			//set data = msg that needs to be sent
+			//remove the msg from MsgsToBeSent
+			fmt.Println("len(c.MsgsToBeSent)")
+			fmt.Println("len(c.MsgsToBeSent)")
+			fmt.Println("len(c.MsgsToBeSent)")
+			fmt.Println("len(c.MsgsToBeSent)")
+			fmt.Println("len(c.MsgsToBeSent)")
+			fmt.Println("len(c.MsgsToBeSent)")
+			fmt.Println(len(c.MsgsToBeSent))
+			data = c.MsgsToBeSent[0]
+			c.MsgsToBeSent = append(c.MsgsToBeSent[:0], c.MsgsToBeSent[0+1:]...)
+			fmt.Println("read from MsgsToBeSent")
+		}
+
+		//data := "bang \n"
+		fmt.Println("data HERE")
+		fmt.Println(data)
 		fmt.Printf("WRITING: %+v\n", s)
 		// fmt.Println("AFTER READSTRING")
 		// fmt.Println("data: " + data)
@@ -652,6 +731,8 @@ func (c *Client) writeExampleData(s net.Stream) {
 		// old way
 
 		count++
+		//NEW SHIT
+		data = ""
 	}
 }
 

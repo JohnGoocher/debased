@@ -72,6 +72,12 @@ func main() {
 	// sampleClient.streams = make(map[peer.ID]net.Stream)
 	// sampleClient.rw = make(map[peer.ID]*bufio.ReadWriter)
 
+	//NEW SHIT HERE
+	sampleClient.CLToBeSent = []string{}
+	sampleClient.CLToBeSent = append(sampleClient.CLToBeSent, "hi! i am a CL msg")
+	sampleClient.MsgsToBeSent = []string{}
+	sampleClient.MsgsToBeSent = append(sampleClient.MsgsToBeSent, "GIVE ME THE W")
+
 	// sampleClient.Streams = make(map[string]interface{})
 	sampleClient.Streams = make(map[string]net.Stream)
 	// sampleClient.buildStreams = make(map[string]bool)
@@ -240,6 +246,7 @@ func main() {
 
 		go sampleClient.readExampleData(s)
 		go sampleClient.writeExampleData(s)
+		go sampleClient.checkCL(s)
 
 		fmt.Println("LET'S CHECK OUT THOSE STREAMS")
 		fmt.Println("%+v\n", sampleClient.Streams)
