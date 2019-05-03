@@ -33,6 +33,10 @@ var readDataCmd = &cobra.Command{
 			return fmt.Errorf("Requires a minimum amount of %d arguments", minRequiredArguments)
 		}
 
+		if !hasValidReadDataKeywords(args) {
+			return fmt.Errorf("Missing required argument(s): 'COLUMNS', 'FROM', or 'VALUES'")
+		}
+
 		columnNames := args[pos(args, "COLUMNS")+1 : pos(args, "FROM")]
 		// Check to see if the <table_name> is in the metadata
 		// tableNameArg := args[pos(args, "FROM")+1]
@@ -60,7 +64,6 @@ var readDataCmd = &cobra.Command{
 
 		if len(args) > 3+len(columnNames) {
 			maxOptionalArgs := 2
-			fmt.Println("The length of the args is into the optional length")
 
 			if args[3+len(columnNames)] != "WHERE" {
 				return fmt.Errorf("Requires the 'WHERE' argument as the next optional argument instead of: %s", args[3+len(columnNames)])
@@ -72,15 +75,41 @@ var readDataCmd = &cobra.Command{
 
 			condition := args[pos(args, "WHERE")+1]
 
-			fmt.Println(condition)
-
 			// Checks to see if a valid condition:
-			if !strings.Contains(condition, "=") || !strings.Contains(condition, ">") || !strings.Contains(condition, "<") {
+			if !strings.ContainsAny(condition, ">=<") {
 				return errors.New("Requires an '=', '>', or '<' operator in the condition")
 			}
 		}
 
 		return nil
+	},
+	PreRun: func(cmd *cobra.Command, args []string) {
+		readDataArgs := &ReadDataArgs{
+			columnNames: []string{},
+			tableName:   "",
+			conditions:  []string{},
+		}
+		i := 0
+
+		if args[i] == "COLUMNS" {
+			i++
+			for args[i] != "FROM" {
+				readDataArgs.columnNames = append(readDataArgs.columnNames, args[i])
+				i++
+			}
+		}
+		if args[i] == "FROM" {
+			i++
+			readDataArgs.tableName = args[i]
+			i++
+		}
+		if i != len(args) && args[i] == "WHERE" {
+			i++
+			for i < len(args) {
+				readDataArgs.conditions = append(readDataArgs.conditions, args[i])
+				i++
+			}
+		}
 	},
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
@@ -90,6 +119,7 @@ var readDataCmd = &cobra.Command{
 	// to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("readData called")
+		// send the readDataArgs off at this point
 	},
 }
 

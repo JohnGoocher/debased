@@ -23,7 +23,7 @@ import (
 
 // createTableCmd represents the createTable command
 var createTableCmd = &cobra.Command{
-	Use:   "createTable <table name> {<column_name> <data_type>}... <max payment allowed>",
+	Use:   "createTable <table name> COLUMNS {<column_name> <data_type>}... PAY <max payment allowed>",
 	Short: "Creates a table on the debased network",
 	Args: func(cmd *cobra.Command, args []string) error {
 		// example usage: 'debased createTable pets cats 40'
@@ -40,15 +40,11 @@ var createTableCmd = &cobra.Command{
 			return fmt.Errorf("Requires <max_payment_allowed> (int) as last argument instead of: '%s'", args[len(args)-1])
 		}
 
-		// tableName := args[1]
-
-		// check if <tableName> already exists as a table in the network or not
-
-		for i := 1; i < len(args)-1; i += 2 {
+		for i := 2; i < len(args)-2; i += 2 {
 			columnNames = append(columnNames, args[i])
 		}
 
-		for i := 2; i < len(args)-1; i += 2 {
+		for i := 3; i < len(args)-2; i += 2 {
 			if args[i] == "varchar" || args[i] == "int" {
 				dataTypeValues = append(dataTypeValues, args[i])
 			} else {
@@ -58,6 +54,10 @@ var createTableCmd = &cobra.Command{
 
 		if len(columnNames) != len(dataTypeValues) {
 			return fmt.Errorf("Requires same number of column names and data types in form {<column_name> <data_type>}")
+		}
+
+		if args[len(args)-2] != "PAY" {
+			return fmt.Errorf("Requires the 'PAY' (string) argument as the next required argument instead of: '%s'", args[len(args)-2])
 		}
 
 		// Check if can give that amount of payment (account balance is not enough or something)
@@ -70,8 +70,38 @@ var createTableCmd = &cobra.Command{
 	// Cobra is a CLI library for Go that empowers applications.
 	// This application is a tool to generate the needed files
 	// to quickly create a Cobra application.`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// "createTable <table name> COLUMNS {<column_name> <data_type>}... PAY <max payment allowed>",
+		// requiredArgs := &RequiredArgs{[]interface{}{&TableNameArg{""}, &ColumnArgs{[]string{}}, &ValueArgs{[]string{}}, &PayArg{0}}}
+		createTableArgs := &CreateTableArgs{
+			tableName:       "",
+			columnNames:     []string{},
+			columnDataTypes: []string{},
+			payment:         0,
+		}
+		i := 0
+
+		createTableArgs.tableName = args[i]
+		i++
+		if args[i] == "COLUMNS" {
+			i++
+			for args[i] != "PAY" {
+				createTableArgs.columnNames = append(createTableArgs.columnNames, args[i])
+				createTableArgs.columnDataTypes = append(createTableArgs.columnDataTypes, args[i+1])
+				i += 2
+			}
+		}
+		if args[i] == "PAY" {
+			i++
+			var err error
+			createTableArgs.payment, err = strconv.Atoi(args[i])
+			if err != nil {
+				fmt.Errorf("Payment argument <string> not properly casted to an int")
+			}
+		}
+	},
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("createTable called")
+		fmt.Println("createTable called.")
 	},
 }
 

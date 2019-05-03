@@ -24,55 +24,13 @@ import (
 // finds the position of the string in the slice of strings.
 // Returns -1 if the string is not found.
 
-func pos(s []string, value string) int {
-	for i, v := range s {
-		if value == v {
-			return i
-		}
-	}
-	return -1
-}
-
-func contains(s []string, value string) bool {
-	for _, v := range s {
-		if value == v {
-			return true
-		}
-	}
-	return false
-}
-
-// func isValidKeyword(value string) bool {
-// 	if value == "INTO" ||  {
-// 		return fmt.Errorf("Valid keyword ", value)
-// 	}
-// }
-
-func hasValidKeywords(s []string) bool {
-	if !contains(s, "INTO") {
-		return false
-	}
-	if !contains(s, "COLUMNS") {
-		return false
-	}
-	if !contains(s, "VALUES") {
-		return false
-	}
-	return true
-}
-
-func areColumnsValuesSameSize(s []string) bool {
-	columnSize := pos(s, "VALUES") - pos(s, "COLUMNS") + 1
-	valueSize := len(s) - 1 - pos(s, "VALUES") + 1
-	return columnSize == valueSize
-}
-
 // addDataCmd represents the addData command
 var addDataCmd = &cobra.Command{
-	Use:   "addData INTO <table_name> COLUMNS <column_name(s)>... VALUES <value(s)>... <max_payment_allowed>",
+	Use:   "addData INTO <table_name> COLUMNS <column_name(s)>... VALUES <value(s)>... PAY <max_payment_allowed>",
 	Short: "Adds data to a table",
 	Args: func(cmd *cobra.Command, args []string) error {
 		// Identify all the args that are <column_names> in an arg
+		// Checks the args to ensure that the args are in the correct position and are correct
 		minRequiredArguments := 7
 
 		if len(args) < minRequiredArguments {
@@ -82,11 +40,11 @@ var addDataCmd = &cobra.Command{
 		tableNameArg := args[1]
 		maxPayment := args[len(args)-1]
 
-		if !hasValidKeywords(args) {
+		if !hasValidAddDataKeywords(args) {
 			return fmt.Errorf("Missing required argument(s): 'INTO', 'COLUMNS', or 'VALUES'")
 		}
 
-		columnNames := args[pos(args, tableNameArg)+1 : pos(args, "VALUES")]
+		columnNames := args[pos(args, tableNameArg)+2 : pos(args, "VALUES")]
 		// values := args[pos(args, "VALUES")+1 : pos(args, maxPayment)]
 
 		if args[0] != "INTO" {
@@ -101,7 +59,7 @@ var addDataCmd = &cobra.Command{
 
 		// Check to see if the columns in <columnNames> are in the metadata
 
-		if args[3+len(columnNames)] == "VALUES" {
+		if args[3+len(columnNames)] != "VALUES" {
 			return fmt.Errorf("Requires the 'VALUES' (string) argument as the next required argument instead of: '%s'", args[3+len(columnNames)])
 		}
 
@@ -110,6 +68,10 @@ var addDataCmd = &cobra.Command{
 		}
 
 		// Check if the values in the <values> slice (commented above) are located in the metadata
+
+		if args[len(args)-2] != "PAY" {
+			return fmt.Errorf("Requires the 'PAY' (string) argument as the next required argument instead of: '%s'", args[len(args)-2])
+		}
 
 		if _, err := strconv.Atoi(maxPayment); err != nil {
 			return fmt.Errorf("Requires <max_payment_allowed> (int) argument instead of: '%s'", args[len(args)-1])
@@ -122,11 +84,50 @@ var addDataCmd = &cobra.Command{
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
 
-	// Cobra is a CLI library for Go that empowers applications.
-	// This application is a tool to generate the needed files
-	// to quickly create a Cobra application.`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// addData INTO <table_name> COLUMNS <column_name(s)>... VALUES <value(s)>... PAY <max_payment_allowed>
+		// requiredArgs := &RequiredArgs{[]interface{}{&TableNameArg{""}, &ColumnArgs{[]string{}}, &ValueArgs{[]string{}}, &PayArg{0}}}
+		addDataArgs := &AddDataRequiredArgs{
+			tableName:   "",
+			columnNames: []string{},
+			valueNames:  []string{},
+			payment:     0,
+		}
+		i := 0
+
+		if args[i] == "INTO" {
+			i++
+			addDataArgs.tableName = args[i]
+			i++
+		}
+		if args[i] == "COLUMNS" {
+			i++
+			for args[i] != "VALUES" {
+				addDataArgs.columnNames = append(addDataArgs.columnNames, args[i])
+				i++
+			}
+		}
+		if args[i] == "VALUES" {
+			i++
+			for args[i] != "PAY" {
+				addDataArgs.valueNames = append(addDataArgs.valueNames, args[i])
+				i++
+			}
+		}
+		if args[i] == "PAY" {
+			i++
+			var err error
+			addDataArgs.payment, err = strconv.Atoi(args[i])
+			if err != nil {
+				fmt.Errorf("Payment argument <string> not properly casted to an int")
+			}
+		}
+	},
+
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("addData called")
+		// call a function to send in addData Args
+		// DebasedSystem.PendingTransactions
 	},
 }
 
