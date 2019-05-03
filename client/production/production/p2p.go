@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-net"
@@ -30,11 +31,13 @@ type firstStream struct {
 //Client contains pertinate info to the nodes networking
 type Client struct {
 	//this hook is so tragicly dumb
-  MsgsToBeSent	[]string
-	CLToBeSent		[]string
+  //MsgsToBeSent	[]string
+	//CLToBeSent		[]string
 
 	testMap 			map[string]string
-
+	POSWrapperSlice []*POSWrapper
+	localDebasedSystem *DebasedSystem
+	msgsToBeSent	*[][]byte
 	// rw map[peer.ID]*bufio.ReadWriter
 	rw 						map[net.Stream]*bufio.ReadWriter
 
@@ -169,7 +172,7 @@ func (c *Client) handleStream(s net.Stream) {
 
 	go c.readExampleData(s)
 	go c.writeExampleData(s)
-	go c.checkCL(s)
+	go c.writePOSWrappedData(s)
 
 	fmt.Printf("%+v\n", c.Streams)
 	fmt.Printf("%+v\n", s)
@@ -186,7 +189,6 @@ func (c *Client) handleStream(s net.Stream) {
 }
 
 func (c *Client) writeStreams(s net.Stream) {
-
 	fmt.Println("writeStreams before json.Marshal")
 	fmt.Printf("c.buildStreams: %+v\n", c.buildStreams)
 	fmt.Printf("c.buildStreams: %+v\n", c.buildStreams)
@@ -333,6 +335,10 @@ func (c *Client) readExampleData(s net.Stream) {
 				c.buildNewStreams(*incomingWrapper)
 			case "buildTestMaps":
 				c.buildTestMaps(*incomingWrapper)
+			case "buildPOSWrapper":
+				fmt.Println("got to case build pos wrapper")
+				fmt.Println(*incomingWrapper)
+				c.buildPOSWrapper(*incomingWrapper)
 			}
 
 			// incomingObject := make(map[string]bool)
@@ -404,10 +410,73 @@ func (c *Client) buildTestMaps(incomingWrapper jsonWrapper) {
 		panic(err)
 	}
 
-	fmt.Println("Got something in reset map, launch hook into pos here")
-
 	fmt.Println("AFTER")
 	fmt.Printf("c.testMap: %+v\n", c.testMap)
+}
+
+//HERE HERE HERE HERE
+func (c *Client) buildPOSWrapper(incomingWrapper jsonWrapper) {
+	fmt.Println("buildPOSWrapper")
+
+	createdPOSWrapper := POSWrapper{}
+	fmt.Println("incomingWrapper.Object")
+	fmt.Println(incomingWrapper.Object)
+	if err := json.Unmarshal(incomingWrapper.Object, &createdPOSWrapper); err != nil {
+		fmt.Println("Cannot unmarshal incomingWrapper.Object for c.POSWrapper")
+		panic(err)
+	}
+	if createdPOSWrapper.VerifySignature() != true {
+		fmt.Println("Cannot verify received POSWrapper")
+		return
+	}
+	fmt.Println("THIS IS A COURT MARSHAL")
+	fmt.Println(createdPOSWrapper.Type)
+	switch createdPOSWrapper.Type {
+	case "Transfer":
+		createdTransfer := Transfer{}
+		if err := json.Unmarshal(createdPOSWrapper.Contents, &createdTransfer); err != nil {
+			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for createdTransfer")
+			panic(err)
+		}
+		c.localDebasedSystem.PendingTransactions.Transfers = append(c.localDebasedSystem.PendingTransactions.Transfers, &createdTransfer)
+		fmt.Println("MASSIVE MASSIVE MASSIVE HUGE LARGE")
+		fmt.Println(c.localDebasedSystem.PendingTransactions.Transfers)
+	case "TableCreation":
+		createdTableCreation := TableCreation{}
+		if err := json.Unmarshal(createdPOSWrapper.Contents, &createdTableCreation); err != nil {
+			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for createdTableCreation")
+			panic(err)
+		}
+		c.localDebasedSystem.PendingTransactions.TableCreations = append(c.localDebasedSystem.PendingTransactions.TableCreations, &createdTableCreation)
+	case "Write":
+		createdWrite := Write{}
+		if err := json.Unmarshal(createdPOSWrapper.Contents, &createdWrite); err != nil {
+			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for Write")
+			panic(err)
+		}
+		c.localDebasedSystem.PendingTransactions.Writes = append(c.localDebasedSystem.PendingTransactions.Writes, &createdWrite)
+	case "Edit":
+		createdEdit := Edit{}
+		if err := json.Unmarshal(createdPOSWrapper.Contents, &createdEdit); err != nil {
+			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for createdEdit")
+			panic(err)
+		}
+		c.localDebasedSystem.PendingTransactions.Edits = append(c.localDebasedSystem.PendingTransactions.Edits, &createdEdit)
+	case "Delete":
+		createdDelete := Delete{}
+		if err := json.Unmarshal(createdPOSWrapper.Contents, &createdDelete); err != nil {
+			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for createdDelete")
+			panic(err)
+		}
+		c.localDebasedSystem.PendingTransactions.Deletes = append(c.localDebasedSystem.PendingTransactions.Deletes, &createdDelete)
+	case "ChangePermission":
+		createdChangePermission := ChangePermission{}
+		if err := json.Unmarshal(createdPOSWrapper.Contents, &createdChangePermission); err != nil {
+			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for createdChangePermission")
+			panic(err)
+		}
+		c.localDebasedSystem.PendingTransactions.ChangePermissions = append(c.localDebasedSystem.PendingTransactions.ChangePermissions, &createdChangePermission)
+	}
 }
 
 func (c *Client) buildNewStreams(incomingWrapper jsonWrapper) {
@@ -592,100 +661,21 @@ func (c *Client) buildNewStreams(incomingWrapper jsonWrapper) {
 			c.rw[s] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 			go c.readExampleData(s)
 			go c.writeExampleData(s)
-			go c.checkCL(s)
+			go c.writePOSWrappedData(s)
 		}
 	}
 	// panic(errors.New("stahp"))
 }
 
-func (c *Client) checkCL(s net.Stream) {
-	fmt.Println("Running checkCL()")
-	fmt.Println("Running checkCL()")
-	fmt.Println("Running checkCL()")
-	fmt.Println("Running checkCL()")
-	fmt.Println("Running checkCL()")
-	fmt.Println("Running checkCL()")
-	fmt.Println("Running checkCL()")
-	fmt.Println("Running checkCL()")
-	fmt.Println("Running checkCL()")
-	fmt.Println("Running checkCL()")
-	stdReader := bufio.NewReader(os.Stdin)
-	for{
-		data, err := stdReader.ReadString('\n')
-		fmt.Println("data")
-		fmt.Println(data)
-		if err != nil {
-			fmt.Println("JSON.MARSHALL PANIC")
-			panic(err)
-		}
-		c.CLToBeSent = append(c.CLToBeSent, data)
-	}
-}
-
 func (c *Client) writeExampleData(s net.Stream) {
 	// testMap := make(map[string]string)
-
-	//PLEASE DONT LOSE
-	//stdReader := bufio.NewReader(os.Stdin)
+	stdReader := bufio.NewReader(os.Stdin)
 	count := 0
 	for {
 
 		fmt.Println("count: %i", count)
 		fmt.Print("before> ")
-
-		//this is where things come in to get packaged and sent
-		fmt.Println("add hook from pos here")
-
-		//SO IMPORTANT DONT LOSE
-		//data, err := stdReader.ReadString('\n')
-
-		//NEW SHIT
-		//v, err := stdReader.Peek(1)
-		//fmt.Println("_")
-		//fmt.Println(v)
-		// if the reader is empty and MsgsToBeSent empty wait
-		//NOT ENTERING THIS LOOP INSTEAD ALWAYS INTERING if err == nill
-		//fmt.Println("err")
-		//fmt.Println(err)
-		//fmt.Println("len(c.MsgsToBeSent)")
-		//fmt.Println(len(c.MsgsToBeSent))
-		for len(c.CLToBeSent) == 0 && len(c.MsgsToBeSent) == 0 {
-			// TODO: Make less comput intensive. constant looping is taxing
-			// using bufferedReaders for CLToBeSent and MsgsToBeSent along with 2 go routines should sork
-			continue
-		}
-		data := ""
-		if len(c.CLToBeSent) != 0{
-			//data, _ = stdReader.ReadString('\n')
-			fmt.Println("len(c.CLToBeSent)")
-			fmt.Println("len(c.CLToBeSent)")
-			fmt.Println("len(c.CLToBeSent)")
-			fmt.Println("len(c.CLToBeSent)")
-			fmt.Println("len(c.CLToBeSent)")
-			fmt.Println("len(c.CLToBeSent)")
-			fmt.Println("len(c.CLToBeSent)")
-			fmt.Println(len(c.CLToBeSent))
-			data = c.CLToBeSent[0]
-			c.CLToBeSent = append(c.CLToBeSent[:0], c.CLToBeSent[0+1:]...)
-			fmt.Println("read from cmd line")
-		} else {
-			//set data = msg that needs to be sent
-			//remove the msg from MsgsToBeSent
-			fmt.Println("len(c.MsgsToBeSent)")
-			fmt.Println("len(c.MsgsToBeSent)")
-			fmt.Println("len(c.MsgsToBeSent)")
-			fmt.Println("len(c.MsgsToBeSent)")
-			fmt.Println("len(c.MsgsToBeSent)")
-			fmt.Println("len(c.MsgsToBeSent)")
-			fmt.Println(len(c.MsgsToBeSent))
-			data = c.MsgsToBeSent[0]
-			c.MsgsToBeSent = append(c.MsgsToBeSent[:0], c.MsgsToBeSent[0+1:]...)
-			fmt.Println("read from MsgsToBeSent")
-		}
-
-		//data := "bang \n"
-		fmt.Println("data HERE")
-		fmt.Println(data)
+		data, err := stdReader.ReadString('\n')
 		fmt.Printf("WRITING: %+v\n", s)
 		// fmt.Println("AFTER READSTRING")
 		// fmt.Println("data: " + data)
@@ -693,8 +683,6 @@ func (c *Client) writeExampleData(s net.Stream) {
 		fmt.Println("WHAT")
 		fmt.Printf("c.testMap before: %+v\n", c.testMap)
 		fmt.Printf("data: %+v\n", data)
-		//****** added empty testMap to avoid resending data
-		c.testMap = make(map[string]string)
 
 		c.testMap[data] = data
 		fmt.Printf("c.testMap after: %+v\n", c.testMap)
@@ -731,8 +719,82 @@ func (c *Client) writeExampleData(s net.Stream) {
 		// old way
 
 		count++
-		//NEW SHIT
-		data = ""
+	}
+}
+
+//HERE HERE HERE HERE
+func (c *Client) writePOSWrappedData(s net.Stream) {
+	// testMap := make(map[string]string)
+	count := 0
+	for {
+		for len(*c.msgsToBeSent) == 0 {
+			time.Sleep(2000)
+		}
+	  fmt.Println(" AH AH AH PLZ WORK")
+		fmt.Println(" AH AH AH PLZ WORK")
+		fmt.Println(" AH AH AH PLZ WORK")
+		fmt.Println(" AH AH AH PLZ WORK")
+		fmt.Println(" AH AH AH PLZ WORK")
+		fmt.Println(" AH AH AH PLZ WORK")
+		fmt.Println(" AH AH AH PLZ WORK")
+		fmt.Println(" AH AH AH PLZ WORK")
+		fmt.Println(" AH AH AH PLZ WORK")
+		fmt.Println(" AH AH AH PLZ WORK")
+		fmt.Println("count: %i", count)
+		fmt.Print("before> ")
+		data := (*c.msgsToBeSent)[0]
+		fmt.Println(data)
+
+		fmt.Printf("WRITING: %+v\n", s)
+		// fmt.Println("AFTER READSTRING")
+		// fmt.Println("data: " + data)
+		/*
+		buildPOSWrapper, err := json.Marshal(data)
+		if err != nil {
+			fmt.Println("JSON.MARSHALL PANIC")
+			panic(err)
+		}
+		*/
+		wrapper := &jsonWrapper{
+			Object:     data,
+			ObjectType: "buildPOSWrapper",
+		}
+
+		wrapperBytes, err := json.Marshal(wrapper)
+		if err != nil {
+			fmt.Println("JSON.MARSHALL PANIC")
+			panic(err)
+		}
+
+		*c.msgsToBeSent = (*c.msgsToBeSent)[1:]
+
+		fmt.Println("WELL IS THIS WORKING")
+		fmt.Println("WHAT THE HELL IS THIS WRITING???!?!?!")
+		fmt.Println("WHAT THE HELL IS THIS WRITING???!?!?!")
+		fmt.Println("WHAT THE HELL IS THIS WRITING???!?!?!")
+		fmt.Println("WHAT THE HELL IS THIS WRITING???!?!?!")
+		fmt.Println("WHAT THE HELL IS THIS WRITING???!?!?!")
+		fmt.Println("string(data)")
+		fmt.Printf("%+v\n", string(data))
+		fmt.Println("data")
+		fmt.Printf("%+v\n", data)
+		fmt.Println("string(wrapperBytes)")
+		fmt.Printf("%+v\n", string(wrapperBytes))
+		fmt.Println("wrapperBytes")
+		fmt.Printf("%+v\n", wrapperBytes)
+
+		//THIS IS THE PLACE
+		for _, writer := range c.rw {
+			_, err := writer.Write(wrapperBytes)
+			if err != nil {
+				panic(err)
+			}
+			err = writer.Flush()
+			if err != nil {
+				panic(err)
+			}
+		}
+		count++
 	}
 }
 

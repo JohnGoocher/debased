@@ -4,6 +4,10 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
+	"crypto/ecdsa"
+//	"crypto/elliptic"
+	"encoding/json"
+	"math/big"
 	"flag"
 	"fmt"
 	"io"
@@ -25,8 +29,8 @@ func main() {
 	dest := flag.String("d", "", "Destination multiaddr string")
 	help := flag.Bool("help", false, "Display help")
 	debug := flag.Bool("debug", false, "Debug generates the same node ID on every execution")
-	// testMap := make(map[string]string)
 	sampleClient := &Client{context: context.Background()}
+	sampleClient.testMap = make(map[string]string)
 
 	flag.Parse()
 
@@ -72,12 +76,6 @@ func main() {
 	// sampleClient.streams = make(map[peer.ID]net.Stream)
 	// sampleClient.rw = make(map[peer.ID]*bufio.ReadWriter)
 
-	//NEW SHIT HERE
-	sampleClient.CLToBeSent = []string{}
-	sampleClient.CLToBeSent = append(sampleClient.CLToBeSent, "hi! i am a CL msg")
-	sampleClient.MsgsToBeSent = []string{}
-	sampleClient.MsgsToBeSent = append(sampleClient.MsgsToBeSent, "GIVE ME THE W")
-
 	// sampleClient.Streams = make(map[string]interface{})
 	sampleClient.Streams = make(map[string]net.Stream)
 	// sampleClient.buildStreams = make(map[string]bool)
@@ -95,6 +93,47 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	//pos SHIT here
+	//localDebasedSystem should be a pointer
+	msgHolder := &[][]byte{}
+	localDebasedSystem := &DebasedSystem{PrivateKeysFromSession: make([]*ecdsa.PrivateKey, 0),
+		                                 CurrentBlockHeight: *big.NewInt(0),
+																		 DuringConsensus: false,
+																		 Metadata: &DebasedMetadata{Accounts: make(map[string]AccountInfo), Tables: make(map[string]TableInfo)},
+																		 CurrentBids: make([]*BlockGenerationBid, 0),
+																		 UnconfirmedBlock: nil,
+																		 CurrentBets: make([]*Bet, 0),
+																		 PendingBetPayouts: make([]*Transfer, 0),
+																		 PendingTransactions: &Transactions{},
+																		 HoldingPenTransactions: &Transactions{},
+																		 P2PMsgsToSend: msgHolder,
+	                                   }
+	sampleClient.localDebasedSystem = localDebasedSystem
+	sampleClient.msgsToBeSent = msgHolder
+
+	testAcctPrivKeyFrom, acctNumFrom := createAcct()
+	_, acctNumTo := createAcct()
+	testTransfer := Transfer{ToAcctID: acctNumTo, Ammount: 365.50, FromAcctID: acctNumFrom}
+	fmt.Println("created Test Transfer")
+	fmt.Println(testTransfer)
+	marshalledTestTransfer, err := json.Marshal(testTransfer)
+	if err != nil {
+		fmt.Println("error Marshalling testPosWrapper")
+		panic(err)
+	}
+	testPosWrapper := POSWrapper{Type: "Transfer", Contents: marshalledTestTransfer}
+	testPosWrapper.Sign(testAcctPrivKeyFrom)
+	fmt.Println("It signed!")
+	if testPosWrapper.VerifySignature() == true {
+		fmt.Println("HURRAY IT SIGNED CORRECTLY")
+	}
+	testByteSlice, err := json.Marshal(testPosWrapper)
+	if err != nil {
+		fmt.Println("error Marshalling testPosWrapper")
+		panic(err)
+	}
+	*localDebasedSystem.P2PMsgsToSend = append(*localDebasedSystem.P2PMsgsToSend, testByteSlice)
 
 	if *dest == "" {
 		// Set a function as stream handler.
@@ -235,7 +274,8 @@ func main() {
 		// panic(errors.New("asdfaf"))
 
 		sampleClient.testMap = make(map[string]string)
-		sampleClient.rw[s] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
+		sampleClient.POSWrapperSlice = make([]*POSWrapper, 0)
+		sampleClient.rw[s] = bufio.NewReadWriter(bufio.NewReaderSize(s, 5000), bufio.NewWriterSize(s, 5000))
 
 		// sampleClient := &Client{
 		// 	testMap: make(map[string]string),
@@ -246,7 +286,7 @@ func main() {
 
 		go sampleClient.readExampleData(s)
 		go sampleClient.writeExampleData(s)
-		go sampleClient.checkCL(s)
+		go sampleClient.writePOSWrappedData(s)
 
 		fmt.Println("LET'S CHECK OUT THOSE STREAMS")
 		fmt.Println("%+v\n", sampleClient.Streams)
@@ -254,6 +294,7 @@ func main() {
 		// Create a thread to read and write data.
 		// go writeData(rw)
 		// go readData(rw)
+
 
 		// Hang forever.
 		select {}

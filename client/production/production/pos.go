@@ -2,19 +2,19 @@ package main
 
 import (
 	// TODO: import blockchain and related structs as bc
-	"bufio"
+	//"bufio"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
+	//"fmt"
 	"math/big"
 	"reflect"
-	"strconv"
+	//"strconv"
 	//"bytes"
-	"os"
+	//"os"
 	"strings"
-	"encoding/json"
+	//"encoding/json"
 )
 
 // TODO: Table data and fields need to be encrypted during tableCreation and data entry
@@ -75,8 +75,8 @@ type Delete struct {
   FromAcctID        []byte
 }
 
-// ChangePermissions : transaction that grants an account permissions for a table
-type ChangePermissions struct {
+// ChangePermission : transaction that grants an account permissions for a table
+type ChangePermission struct {
 	TableID             []byte
 	PermissionByTable   *TablePermission
 	//                  acctID : UserPermission
@@ -201,13 +201,13 @@ type Transactions struct {
 	Writes            []*Write
 	Edits             []*Edit
 	Deletes           []*Delete
-	PermissionChanges []*ChangePermissions
+	ChangePermissions []*ChangePermission
 }
 
 //DebasedSystem : model for the nodes' entire view of the debased pos/blockchain system
 type DebasedSystem struct {
 	//this hook is so tragicly dumb
-  ReceievedMsgs           [][]byte
+  //ReceievedMsgs           []string
 
 	PrivateKeysFromSession  []*ecdsa.PrivateKey
 	// TODO: Integrate with blockchain
@@ -221,6 +221,8 @@ type DebasedSystem struct {
 	PendingBetPayouts       []*Transfer
 	PendingTransactions     *Transactions
 	HoldingPenTransactions  *Transactions
+
+	P2PMsgsToSend						*[][]byte
 }
 
 // GenerateBlock : creates a new block using the given DebasedSystem state
@@ -327,9 +329,9 @@ func (debasedS *DebasedSystem) CheckUnconfirmedBlock() bool {
   return reflect.DeepEqual(debasedS.UnconfirmedBlock, debasedS.GenerateBlock)
 }
 
-// JSONWrapper : used to sign and verify obj sent overnetwork
-type JSONWrapper struct {
-	PK        *ecdsa.PublicKey
+//POSWrapperWithMarshalledPublicKey : allows the elliptic key to be transported
+type POSWrapperWithMarshalledPublicKey struct {
+  MarshalledPK []byte
 	R         *big.Int
 	S         *big.Int
 	Type      string
@@ -337,17 +339,31 @@ type JSONWrapper struct {
 	Contents  []byte
 }
 
-// Sign : assgins PK, R, S to JSONWrapper
-func (wrapper *JSONWrapper) Sign(privateKey *ecdsa.PrivateKey) error{
+// POSWrapper : used to sign and verify obj sent overnetwork
+type POSWrapper struct {
+	//PK        *ecdsa.PublicKey
+	X					*big.Int
+	Y					*big.Int
+	R         *big.Int
+	S         *big.Int
+	Type      string
+	//JSON of the encolesed struct
+	Contents  []byte
+}
+
+// Sign : assgins PK, R, S to POSWrapper
+func (wrapper *POSWrapper) Sign(privateKey *ecdsa.PrivateKey) error{
 	var err error
 	wrapper.R, wrapper.S, err = ecdsa.Sign(rand.Reader, privateKey, append([]byte(wrapper.Type), wrapper.Contents...))
-	wrapper.PK = &privateKey.PublicKey
+	wrapper.X = privateKey.PublicKey.X
+	wrapper.Y = privateKey.PublicKey.Y
 	return err
 }
 
-// VerifySignature : verifies the signature in JSONWrapper
-func (wrapper *JSONWrapper) VerifySignature() bool {
-	return ecdsa.Verify(wrapper.PK, append([]byte(wrapper.Type), wrapper.Contents...), wrapper.R, wrapper.S)
+// VerifySignature : verifies the signature in POSWrapper
+func (wrapper *POSWrapper) VerifySignature() bool {
+	createdPubKey := &ecdsa.PublicKey{elliptic.P256(), wrapper.X, wrapper.Y}
+	return ecdsa.Verify(createdPubKey, append([]byte(wrapper.Type), wrapper.Contents...), wrapper.R, wrapper.S)
 }
 
 //NOW TODOs
@@ -384,7 +400,7 @@ func (wrapper *JSONWrapper) VerifySignature() bool {
 // Future: confidence system for inter-node relations
 // Future: track accounts/nodes with skin in the game, how much, and where
 // Future: table deletion
-// Future: PermissionChanges
+// Future: ChangePermission
 
 //AccountNumber : determines account number from PublicKey
 func AccountNumber(publicKey ecdsa.PublicKey) []byte {
@@ -400,7 +416,7 @@ func createAcct() (*ecdsa.PrivateKey, []byte) {
 	}
 	return privateKey, AccountNumber(privateKey.PublicKey)
 }
-
+/*
 func main() {
 	nodeDebasedSystem := DebasedSystem{PrivateKeysFromSession: make([]*ecdsa.PrivateKey, 0),
 		                                 CurrentBlockHeight: *big.NewInt(0),
@@ -583,7 +599,7 @@ func main() {
 	    if err != nil {
 		    fmt.Println("error:", err)
 	    }
-			wrapper := &JSONWrapper{Type:"GeneratedBlock", Contents:b}
+			wrapper := &POSWrapper{Type:"GeneratedBlock", Contents:b}
 			toAcctIndex, err := strconv.ParseInt(args[1], 10, 64)
 			wrapper.Sign(nodeDebasedSystem.PrivateKeysFromSession[toAcctIndex])
 			//fmt.Println("ORIG WRAPPER")
@@ -595,7 +611,7 @@ func main() {
 		  //  fmt.Println("error:", err)
 	    //}
 			//jsonOfWrapper, err := json.Marshal(*wrapper)
-			//var unMarshaledWrapper JSONWrapper
+			//var unMarshaledWrapper POSWrapper
 			//err = json.Unmarshal(jsonOfWrapper, &unMarshaledWrapper)
 			//if err != nil {
 		  //  fmt.Println("error:", err)
@@ -617,7 +633,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "reading standard input:", err)
 	}
 }
-
+*/
 func join(strs ...string) string {
 	var sb strings.Builder
 	for _, str := range strs {
