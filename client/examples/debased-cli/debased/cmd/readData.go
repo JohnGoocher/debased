@@ -22,6 +22,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// func accessArg(args []string, index int) error {
+
+// }
+
 // readDataCmd represents the readData command
 var readDataCmd = &cobra.Command{
 	Use:   "readData COLUMNS <column_name(s)>... FROM <table_name> [WHERE] [<condition>] {[AND|OR] [<condition>]}...",
@@ -31,6 +35,10 @@ var readDataCmd = &cobra.Command{
 
 		if len(args) < minRequiredArguments {
 			return fmt.Errorf("Requires a minimum amount of %d arguments", minRequiredArguments)
+		}
+
+		if !hasValidKeywords(args) {
+			return fmt.Errorf("Missing required argument(s): 'COLUMNS', 'FROM', or 'VALUES'")
 		}
 
 		columnNames := args[pos(args, "COLUMNS")+1 : pos(args, "FROM")]
@@ -81,6 +89,42 @@ var readDataCmd = &cobra.Command{
 		}
 
 		return nil
+	},
+	PreRun: func(cmd *cobra.Command, args []string) {
+		// "readData COLUMNS <column_name(s)>... FROM <table_name> [WHERE] [<condition>] {[AND|OR] [<condition>]}...",
+		fmt.Println("Prerun readData called")
+		// requiredArgs := &RequiredArgs{[]interface{}{&TableNameArg{""}, &ColumnArgs{[]string{}}, &ValueArgs{[]string{}}, &PayArg{0}}}
+		readDataArgs := &ReadDataArgs{
+			columnNames: []string{},
+			tableName:   "",
+			conditions:  []string{},
+		}
+		fmt.Printf("args: %v \n", readDataArgs)
+		i := 0
+
+		if args[i] == "COLUMNS" {
+			i++
+			for args[i] != "FROM" {
+				readDataArgs.columnNames = append(readDataArgs.columnNames, args[i])
+				i++
+			}
+			fmt.Printf("readData.colmnNames: %v \n", readDataArgs.columnNames)
+		}
+		if args[i] == "FROM" {
+			i++
+			readDataArgs.tableName = args[i]
+			i++
+			fmt.Println("readData.tableName: " + readDataArgs.tableName)
+		}
+		if args[i] == "WHERE" {
+			i++
+			for i < len(args) {
+				readDataArgs.conditions = append(readDataArgs.conditions, args[i])
+				i++
+			}
+			fmt.Printf("readData.conditions: %v \n", readDataArgs.conditions)
+		}
+		fmt.Println(readDataArgs)
 	},
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
