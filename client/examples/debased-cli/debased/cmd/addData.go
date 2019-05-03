@@ -41,7 +41,7 @@ var addDataCmd = &cobra.Command{
 		tableNameArg := args[1]
 		maxPayment := args[len(args)-1]
 
-		if !hasValidKeywords(args) {
+		if !hasValidAddDataKeywords(args) {
 			return fmt.Errorf("Missing required argument(s): 'INTO', 'COLUMNS', or 'VALUES'")
 		}
 
@@ -95,7 +95,7 @@ var addDataCmd = &cobra.Command{
 			valueNames:  []string{},
 			payment:     0,
 		}
-		fmt.Println(args)
+		fmt.Printf("args: %v ", args)
 		i := 0
 
 		if args[i] == "INTO" {

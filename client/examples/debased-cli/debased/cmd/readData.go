@@ -37,7 +37,7 @@ var readDataCmd = &cobra.Command{
 			return fmt.Errorf("Requires a minimum amount of %d arguments", minRequiredArguments)
 		}
 
-		if !hasValidKeywords(args) {
+		if !hasValidReadDataKeywords(args) {
 			return fmt.Errorf("Missing required argument(s): 'COLUMNS', 'FROM', or 'VALUES'")
 		}
 
@@ -79,11 +79,10 @@ var readDataCmd = &cobra.Command{
 			}
 
 			condition := args[pos(args, "WHERE")+1]
-
-			fmt.Println(condition)
+			fmt.Println("condition: " + condition)
 
 			// Checks to see if a valid condition:
-			if !strings.Contains(condition, "=") || !strings.Contains(condition, ">") || !strings.Contains(condition, "<") {
+			if !strings.ContainsAny(condition, ">=<") {
 				return errors.New("Requires an '=', '>', or '<' operator in the condition")
 			}
 		}
@@ -99,7 +98,6 @@ var readDataCmd = &cobra.Command{
 			tableName:   "",
 			conditions:  []string{},
 		}
-		fmt.Printf("args: %v \n", readDataArgs)
 		i := 0
 
 		if args[i] == "COLUMNS" {
@@ -116,7 +114,7 @@ var readDataCmd = &cobra.Command{
 			i++
 			fmt.Println("readData.tableName: " + readDataArgs.tableName)
 		}
-		if args[i] == "WHERE" {
+		if i != len(args) && args[i] == "WHERE" {
 			i++
 			for i < len(args) {
 				readDataArgs.conditions = append(readDataArgs.conditions, args[i])
@@ -124,7 +122,7 @@ var readDataCmd = &cobra.Command{
 			}
 			fmt.Printf("readData.conditions: %v \n", readDataArgs.conditions)
 		}
-		fmt.Println(readDataArgs)
+		fmt.Print(readDataArgs)
 	},
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:
@@ -134,6 +132,7 @@ var readDataCmd = &cobra.Command{
 	// to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("readData called")
+		// send the readDataArgs off at this point
 	},
 }
 

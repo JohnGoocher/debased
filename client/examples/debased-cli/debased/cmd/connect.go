@@ -39,7 +39,16 @@ var connectCmd = &cobra.Command{
 	// Cobra is a CLI library for Go that empowers applications.
 	// This application is a tool to generate the needed files
 	// to quickly create a Cobra application.`,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		connectArg := &ConnectArg{
+			ip: "",
+		}
+		connectArg.ip = args[0]
+		fmt.Println("connect PreRun called.")
+		fmt.Println(connectArg)
+	},
 	Run: func(cmd *cobra.Command, args []string) {
+		// incude the connectArg struct to be sent over to some other program
 		fmt.Println("connect called")
 	},
 }

@@ -37,17 +37,17 @@ type ReadDataArgs struct {
 	conditions  []string
 }
 
-// ConnectArgs hey
-type ConnectArgs struct {
+// ConnectArg hey
+type ConnectArg struct {
 	// "connect <ip address>"
 	ip string
 }
 
 // CreateTable hey
-type CreateTable struct {
+type CreateTableArgs struct {
 	// createTable <table name> {<column_name> <data_type>}... PAY <max payment allowed>
-	tableName      string
-	columnNames    []string
-	columnDataType []string
-	payment        int
+	tableName       string
+	columnNames     []string
+	columnDataTypes []string
+	payment         int
 }
