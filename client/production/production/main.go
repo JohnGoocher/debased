@@ -84,11 +84,13 @@ func main() {
 	sampleClient.rw = make(map[net.Stream]*bufio.ReadWriter)
 	sampleClient.streamPorts = make(map[string]string)
 
+/*
 	fmt.Println("HOST.ID().PRETTY()")
 	fmt.Println("HOST.ID().PRETTY()")
 	fmt.Printf("%+v\n", host.ID().Pretty())
 	fmt.Println("HOST.ID().PRETTY()")
 	fmt.Println("HOST.ID().PRETTY()")
+	*/
 
 	if err != nil {
 		panic(err)
@@ -115,8 +117,8 @@ func main() {
 	testAcctPrivKeyFrom, acctNumFrom := createAcct()
 	_, acctNumTo := createAcct()
 	testTransfer := Transfer{ToAcctID: acctNumTo, Ammount: 365.50, FromAcctID: acctNumFrom}
-	fmt.Println("created Test Transfer")
-	fmt.Println(testTransfer)
+	//fmt.Println("created Test Transfer")
+	//fmt.Println(testTransfer)
 	marshalledTestTransfer, err := json.Marshal(testTransfer)
 	if err != nil {
 		fmt.Println("error Marshalling testPosWrapper")
@@ -124,7 +126,7 @@ func main() {
 	}
 	testPosWrapper := POSWrapper{Type: "Transfer", Contents: marshalledTestTransfer}
 	testPosWrapper.Sign(testAcctPrivKeyFrom)
-	fmt.Println("It signed!")
+	//fmt.Println("It signed!")
 	if testPosWrapper.VerifySignature() != true {
 		panic("POSWrapper signed incorrectly")
 	}
@@ -149,7 +151,7 @@ func main() {
 		// 	origin:    true,
 		// }
 
-		fmt.Printf("sampleClient.buildStreams: %+v\n", sampleClient.buildStreams)
+		//fmt.Printf("sampleClient.buildStreams: %+v\n", sampleClient.buildStreams)
 
 		// Let's get the actual TCP port from our listen multiaddr, in case we're using 0 (default; random available port).
 		var port string
@@ -169,7 +171,7 @@ func main() {
 			port:      port,
 		}
 
-		fmt.Printf("sampleClient.buildStreams: %+v\n", sampleClient.buildStreams)
+		//fmt.Printf("sampleClient.buildStreams: %+v\n", sampleClient.buildStreams)
 
 		sampleClient.streamPorts[idString] = port
 

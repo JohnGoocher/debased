@@ -319,9 +319,9 @@ func (c *Client) readExampleData(s net.Stream) {
 
 		// incomingBuildStreams := map[string]bool{}
 
-		fmt.Println("MORE MORE MORE")
-		fmt.Println("MORE MORE MORE")
-		fmt.Println("MORE MORE MORE")
+		//fmt.Println("MORE MORE MORE")
+		//fmt.Println("MORE MORE MORE")
+		//fmt.Println("MORE MORE MORE")
 
 		if len(wrapperBytes) > 0 {
 
@@ -344,7 +344,7 @@ func (c *Client) readExampleData(s net.Stream) {
 			case "buildTestMaps":
 				c.buildTestMaps(*incomingWrapper)
 			case "buildPOSWrapper":
-				fmt.Println("got to case build pos wrapper")
+				//fmt.Println("got to case build pos wrapper")
 				fmt.Println(*incomingWrapper)
 				c.buildPOSWrapper(*incomingWrapper)
 			}
@@ -445,8 +445,8 @@ func (c *Client) buildPOSWrapper(incomingWrapper jsonWrapper) {
 	fmt.Println("buildPOSWrapper")
 
 	createdPOSWrapper := POSWrapper{}
-	fmt.Println("incomingWrapper.Object")
-	fmt.Println(incomingWrapper.Object)
+	//fmt.Println("incomingWrapper.Object")
+	//fmt.Println(incomingWrapper.Object)
 	if err := json.Unmarshal(incomingWrapper.Object, &createdPOSWrapper); err != nil {
 		fmt.Println("Cannot unmarshal incomingWrapper.Object for c.POSWrapper")
 		panic(err)
@@ -455,7 +455,7 @@ func (c *Client) buildPOSWrapper(incomingWrapper jsonWrapper) {
 		fmt.Println("Cannot verify received POSWrapper")
 		return
 	}
-	fmt.Println("THIS IS A COURT MARSHAL")
+	//fmt.Println("THIS IS A COURT MARSHAL")
 	fmt.Println(createdPOSWrapper.Type)
 	switch createdPOSWrapper.Type {
 	case "Transfer":
@@ -470,7 +470,7 @@ func (c *Client) buildPOSWrapper(incomingWrapper jsonWrapper) {
 			panic("Message Signer was not Sender")
 		}
 		c.localDebasedSystem.PendingTransactions.Transfers = append(c.localDebasedSystem.PendingTransactions.Transfers, &createdTransfer)
-		fmt.Println("MASSIVE MASSIVE MASSIVE HUGE LARGE")
+		fmt.Println("c.localDebasedSystem.PendingTransactions.Transfers")
 		fmt.Println(c.localDebasedSystem.PendingTransactions.Transfers)
 	case "TableCreation":
 		createdTableCreation := TableCreation{}
@@ -736,7 +736,7 @@ func (c *Client) writeExampleData(s net.Stream) {
 		// fmt.Println("AFTER READSTRING")
 		// fmt.Println("data: " + data)
 
-		fmt.Println("WHAT")
+		//fmt.Println("WHAT")
 		fmt.Printf("c.testMap before: %+v\n", c.testMap)
 		fmt.Printf("data: %+v\n", data)
 
@@ -793,6 +793,7 @@ func (c *Client) writePOSWrappedData(s net.Stream) {
 		for len(*c.msgsToBeSent) == 0 {
 			time.Sleep(2000)
 		}
+		/*
 	  fmt.Println(" AH AH AH PLZ WORK")
 		fmt.Println(" AH AH AH PLZ WORK")
 		fmt.Println(" AH AH AH PLZ WORK")
@@ -803,6 +804,7 @@ func (c *Client) writePOSWrappedData(s net.Stream) {
 		fmt.Println(" AH AH AH PLZ WORK")
 		fmt.Println(" AH AH AH PLZ WORK")
 		fmt.Println(" AH AH AH PLZ WORK")
+		*/
 		fmt.Println("count: %i", count)
 		fmt.Print("before> ")
 		data := (*c.msgsToBeSent)[0]
@@ -831,20 +833,22 @@ func (c *Client) writePOSWrappedData(s net.Stream) {
 
 		*c.msgsToBeSent = (*c.msgsToBeSent)[1:]
 
+		/*
 		fmt.Println("WELL IS THIS WORKING")
 		fmt.Println("WHAT THE HELL IS THIS WRITING???!?!?!")
 		fmt.Println("WHAT THE HELL IS THIS WRITING???!?!?!")
 		fmt.Println("WHAT THE HELL IS THIS WRITING???!?!?!")
 		fmt.Println("WHAT THE HELL IS THIS WRITING???!?!?!")
 		fmt.Println("WHAT THE HELL IS THIS WRITING???!?!?!")
+		*/
 		fmt.Println("string(data)")
 		fmt.Printf("%+v\n", string(data))
-		fmt.Println("data")
-		fmt.Printf("%+v\n", data)
+		//fmt.Println("data")
+		//fmt.Printf("%+v\n", data)
 		fmt.Println("string(wrapperBytes)")
 		fmt.Printf("%+v\n", string(wrapperBytes))
-		fmt.Println("wrapperBytes")
-		fmt.Printf("%+v\n", wrapperBytes)
+		//fmt.Println("wrapperBytes")
+		//fmt.Printf("%+v\n", wrapperBytes)
 
 		//TODO Add ability to dynamically scale the size of rw
 		for _, writer := range c.rw {
