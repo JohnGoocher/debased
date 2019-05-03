@@ -10,6 +10,8 @@ import (
 	"os"
 	"strings"
 	"time"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-net"
@@ -126,7 +128,7 @@ func (c *Client) handleStream(s net.Stream) {
 	parsedIncomingPort := fmt.Sprintf("%+v", s.Conn())[firstIndexPort+1 : lastIndexPort]
 	fmt.Printf("parsedIncomingPort: %+v\n", parsedIncomingPort)
 
-	c.rw[s] = bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
+	c.rw[s] = bufio.NewReadWriter(bufio.NewReaderSize(s, 10000), bufio.NewWriterSize(s, 10000))
 	// c.buildStreams[parsedIncomingStream] = true
 	// reassign := c.buildStreams[parsedIncomingStream]
 	// reassign.connected = true
@@ -219,8 +221,14 @@ func (c *Client) writeStreams(s net.Stream) {
 	fmt.Println("STRRRRRREEEAMMMMSSSSSSS")
 	fmt.Printf("%+v\n", c.Streams)
 
-	c.rw[s].Write(wrapperBytes)
-	c.rw[s].Flush()
+	_, err = c.rw[s].Write(wrapperBytes)
+	if err != nil {
+		panic(err)
+	}
+	err = c.rw[s].Flush()
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println("POST FLUSH")
 
@@ -414,6 +422,24 @@ func (c *Client) buildTestMaps(incomingWrapper jsonWrapper) {
 	fmt.Printf("c.testMap: %+v\n", c.testMap)
 }
 
+func slicesEqual(a, b []byte) bool {
+    if (a == nil) != (b == nil) {
+        return false;
+    }
+
+    if len(a) != len(b) {
+        return false
+    }
+
+    for i := range a {
+        if a[i] != b[i] {
+            return false
+        }
+    }
+
+    return true
+}
+
 //HERE HERE HERE HERE
 func (c *Client) buildPOSWrapper(incomingWrapper jsonWrapper) {
 	fmt.Println("buildPOSWrapper")
@@ -438,6 +464,11 @@ func (c *Client) buildPOSWrapper(incomingWrapper jsonWrapper) {
 			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for createdTransfer")
 			panic(err)
 		}
+		createdPubKey := ecdsa.PublicKey{elliptic.P256(), createdPOSWrapper.X, createdPOSWrapper.Y}
+		if !slicesEqual(createdTransfer.FromAcctID, AccountNumber(createdPubKey)) {
+			fmt.Println("Message Signer was not Sender")
+			panic("Message Signer was not Sender")
+		}
 		c.localDebasedSystem.PendingTransactions.Transfers = append(c.localDebasedSystem.PendingTransactions.Transfers, &createdTransfer)
 		fmt.Println("MASSIVE MASSIVE MASSIVE HUGE LARGE")
 		fmt.Println(c.localDebasedSystem.PendingTransactions.Transfers)
@@ -447,12 +478,22 @@ func (c *Client) buildPOSWrapper(incomingWrapper jsonWrapper) {
 			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for createdTableCreation")
 			panic(err)
 		}
+		createdPubKey := ecdsa.PublicKey{elliptic.P256(), createdPOSWrapper.X, createdPOSWrapper.Y}
+		if !slicesEqual(createdTableCreation.FromAcctID, AccountNumber(createdPubKey)) {
+			fmt.Println("Message Signer was not Sender")
+			panic("Message Signer was not Sender")
+		}
 		c.localDebasedSystem.PendingTransactions.TableCreations = append(c.localDebasedSystem.PendingTransactions.TableCreations, &createdTableCreation)
 	case "Write":
 		createdWrite := Write{}
 		if err := json.Unmarshal(createdPOSWrapper.Contents, &createdWrite); err != nil {
 			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for Write")
 			panic(err)
+		}
+		createdPubKey := ecdsa.PublicKey{elliptic.P256(), createdPOSWrapper.X, createdPOSWrapper.Y}
+		if !slicesEqual(createdWrite.FromAcctID, AccountNumber(createdPubKey)) {
+			fmt.Println("Message Signer was not Sender")
+			panic("Message Signer was not Sender")
 		}
 		c.localDebasedSystem.PendingTransactions.Writes = append(c.localDebasedSystem.PendingTransactions.Writes, &createdWrite)
 	case "Edit":
@@ -461,6 +502,11 @@ func (c *Client) buildPOSWrapper(incomingWrapper jsonWrapper) {
 			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for createdEdit")
 			panic(err)
 		}
+		createdPubKey := ecdsa.PublicKey{elliptic.P256(), createdPOSWrapper.X, createdPOSWrapper.Y}
+		if !slicesEqual(createdEdit.FromAcctID, AccountNumber(createdPubKey)) {
+			fmt.Println("Message Signer was not Sender")
+			panic("Message Signer was not Sender")
+		}
 		c.localDebasedSystem.PendingTransactions.Edits = append(c.localDebasedSystem.PendingTransactions.Edits, &createdEdit)
 	case "Delete":
 		createdDelete := Delete{}
@@ -468,12 +514,22 @@ func (c *Client) buildPOSWrapper(incomingWrapper jsonWrapper) {
 			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for createdDelete")
 			panic(err)
 		}
+		createdPubKey := ecdsa.PublicKey{elliptic.P256(), createdPOSWrapper.X, createdPOSWrapper.Y}
+		if !slicesEqual(createdDelete.FromAcctID, AccountNumber(createdPubKey)) {
+			fmt.Println("Message Signer was not Sender")
+			panic("Message Signer was not Sender")
+		}
 		c.localDebasedSystem.PendingTransactions.Deletes = append(c.localDebasedSystem.PendingTransactions.Deletes, &createdDelete)
 	case "ChangePermission":
 		createdChangePermission := ChangePermission{}
 		if err := json.Unmarshal(createdPOSWrapper.Contents, &createdChangePermission); err != nil {
 			fmt.Println("Cannot unmarshal createdPOSWrapper.Contents for createdChangePermission")
 			panic(err)
+		}
+		createdPubKey := ecdsa.PublicKey{elliptic.P256(), createdPOSWrapper.X, createdPOSWrapper.Y}
+		if !slicesEqual(createdChangePermission.FromAcctID, AccountNumber(createdPubKey)) {
+			fmt.Println("Message Signer was not Sender")
+			panic("Message Signer was not Sender")
 		}
 		c.localDebasedSystem.PendingTransactions.ChangePermissions = append(c.localDebasedSystem.PendingTransactions.ChangePermissions, &createdChangePermission)
 	}
@@ -708,9 +764,16 @@ func (c *Client) writeExampleData(s net.Stream) {
 		fmt.Printf("%+v\n", string(wrapperBytes))
 		fmt.Printf("%+v\n", wrapperBytes)
 
+		//TODO Add ability to dynamically scale the size of rw
 		for _, writer := range c.rw {
-			writer.Write(wrapperBytes)
-			writer.Flush()
+			_, err := writer.Write(wrapperBytes)
+			if err != nil {
+				panic(err)
+			}
+			err = writer.Flush()
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		// old way
@@ -783,7 +846,7 @@ func (c *Client) writePOSWrappedData(s net.Stream) {
 		fmt.Println("wrapperBytes")
 		fmt.Printf("%+v\n", wrapperBytes)
 
-		//THIS IS THE PLACE
+		//TODO Add ability to dynamically scale the size of rw
 		for _, writer := range c.rw {
 			_, err := writer.Write(wrapperBytes)
 			if err != nil {

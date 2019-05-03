@@ -125,8 +125,8 @@ func main() {
 	testPosWrapper := POSWrapper{Type: "Transfer", Contents: marshalledTestTransfer}
 	testPosWrapper.Sign(testAcctPrivKeyFrom)
 	fmt.Println("It signed!")
-	if testPosWrapper.VerifySignature() == true {
-		fmt.Println("HURRAY IT SIGNED CORRECTLY")
+	if testPosWrapper.VerifySignature() != true {
+		panic("POSWrapper signed incorrectly")
 	}
 	testByteSlice, err := json.Marshal(testPosWrapper)
 	if err != nil {
@@ -275,7 +275,7 @@ func main() {
 
 		sampleClient.testMap = make(map[string]string)
 		sampleClient.POSWrapperSlice = make([]*POSWrapper, 0)
-		sampleClient.rw[s] = bufio.NewReadWriter(bufio.NewReaderSize(s, 5000), bufio.NewWriterSize(s, 5000))
+		sampleClient.rw[s] = bufio.NewReadWriter(bufio.NewReaderSize(s, 10000), bufio.NewWriterSize(s, 10000))
 
 		// sampleClient := &Client{
 		// 	testMap: make(map[string]string),
