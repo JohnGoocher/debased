@@ -44,8 +44,6 @@ var connectCmd = &cobra.Command{
 			ip: "",
 		}
 		connectArg.ip = args[0]
-		fmt.Println("connect PreRun called.")
-		fmt.Println(connectArg)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		// incude the connectArg struct to be sent over to some other program

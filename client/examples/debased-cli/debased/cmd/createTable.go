@@ -72,7 +72,6 @@ var createTableCmd = &cobra.Command{
 	// to quickly create a Cobra application.`,
 	PreRun: func(cmd *cobra.Command, args []string) {
 		// "createTable <table name> COLUMNS {<column_name> <data_type>}... PAY <max payment allowed>",
-		fmt.Println("Prerun addData called")
 		// requiredArgs := &RequiredArgs{[]interface{}{&TableNameArg{""}, &ColumnArgs{[]string{}}, &ValueArgs{[]string{}}, &PayArg{0}}}
 		createTableArgs := &CreateTableArgs{
 			tableName:       "",
@@ -80,11 +79,9 @@ var createTableCmd = &cobra.Command{
 			columnDataTypes: []string{},
 			payment:         0,
 		}
-		fmt.Printf("args: %v ", args)
 		i := 0
 
 		createTableArgs.tableName = args[i]
-		fmt.Println("createTableArgs.tableName: " + createTableArgs.tableName)
 		i++
 		if args[i] == "COLUMNS" {
 			i++
@@ -93,8 +90,6 @@ var createTableCmd = &cobra.Command{
 				createTableArgs.columnDataTypes = append(createTableArgs.columnDataTypes, args[i+1])
 				i += 2
 			}
-			fmt.Printf("addDataArgs.columnNames: %v \n", createTableArgs.columnNames)
-			fmt.Printf("addDataArgs.columnDataTypes: %v \n", createTableArgs.columnDataTypes)
 		}
 		if args[i] == "PAY" {
 			i++
@@ -103,10 +98,7 @@ var createTableCmd = &cobra.Command{
 			if err != nil {
 				fmt.Errorf("Payment argument <string> not properly casted to an int")
 			}
-			fmt.Printf("addDataArgs.payment: %d \n", createTableArgs.payment)
 		}
-
-		fmt.Println(createTableArgs)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("createTable called.")

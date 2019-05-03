@@ -22,10 +22,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// func accessArg(args []string, index int) error {
-
-// }
-
 // readDataCmd represents the readData command
 var readDataCmd = &cobra.Command{
 	Use:   "readData COLUMNS <column_name(s)>... FROM <table_name> [WHERE] [<condition>] {[AND|OR] [<condition>]}...",
@@ -68,7 +64,6 @@ var readDataCmd = &cobra.Command{
 
 		if len(args) > 3+len(columnNames) {
 			maxOptionalArgs := 2
-			fmt.Println("The length of the args is into the optional length")
 
 			if args[3+len(columnNames)] != "WHERE" {
 				return fmt.Errorf("Requires the 'WHERE' argument as the next optional argument instead of: %s", args[3+len(columnNames)])
@@ -79,7 +74,6 @@ var readDataCmd = &cobra.Command{
 			}
 
 			condition := args[pos(args, "WHERE")+1]
-			fmt.Println("condition: " + condition)
 
 			// Checks to see if a valid condition:
 			if !strings.ContainsAny(condition, ">=<") {
@@ -90,9 +84,6 @@ var readDataCmd = &cobra.Command{
 		return nil
 	},
 	PreRun: func(cmd *cobra.Command, args []string) {
-		// "readData COLUMNS <column_name(s)>... FROM <table_name> [WHERE] [<condition>] {[AND|OR] [<condition>]}...",
-		fmt.Println("Prerun readData called")
-		// requiredArgs := &RequiredArgs{[]interface{}{&TableNameArg{""}, &ColumnArgs{[]string{}}, &ValueArgs{[]string{}}, &PayArg{0}}}
 		readDataArgs := &ReadDataArgs{
 			columnNames: []string{},
 			tableName:   "",
@@ -106,13 +97,11 @@ var readDataCmd = &cobra.Command{
 				readDataArgs.columnNames = append(readDataArgs.columnNames, args[i])
 				i++
 			}
-			fmt.Printf("readData.colmnNames: %v \n", readDataArgs.columnNames)
 		}
 		if args[i] == "FROM" {
 			i++
 			readDataArgs.tableName = args[i]
 			i++
-			fmt.Println("readData.tableName: " + readDataArgs.tableName)
 		}
 		if i != len(args) && args[i] == "WHERE" {
 			i++
@@ -120,9 +109,7 @@ var readDataCmd = &cobra.Command{
 				readDataArgs.conditions = append(readDataArgs.conditions, args[i])
 				i++
 			}
-			fmt.Printf("readData.conditions: %v \n", readDataArgs.conditions)
 		}
-		fmt.Print(readDataArgs)
 	},
 	// 	Long: `A longer description that spans multiple lines and likely contains examples
 	// and usage of using your command. For example:

@@ -31,7 +31,6 @@ var addDataCmd = &cobra.Command{
 	Args: func(cmd *cobra.Command, args []string) error {
 		// Identify all the args that are <column_names> in an arg
 		// Checks the args to ensure that the args are in the correct position and are correct
-		fmt.Println("Args validation called.")
 		minRequiredArguments := 7
 
 		if len(args) < minRequiredArguments {
@@ -87,7 +86,6 @@ var addDataCmd = &cobra.Command{
 
 	PreRun: func(cmd *cobra.Command, args []string) {
 		// addData INTO <table_name> COLUMNS <column_name(s)>... VALUES <value(s)>... PAY <max_payment_allowed>
-		fmt.Println("Prerun addData called")
 		// requiredArgs := &RequiredArgs{[]interface{}{&TableNameArg{""}, &ColumnArgs{[]string{}}, &ValueArgs{[]string{}}, &PayArg{0}}}
 		addDataArgs := &AddDataRequiredArgs{
 			tableName:   "",
@@ -95,13 +93,11 @@ var addDataCmd = &cobra.Command{
 			valueNames:  []string{},
 			payment:     0,
 		}
-		fmt.Printf("args: %v ", args)
 		i := 0
 
 		if args[i] == "INTO" {
 			i++
 			addDataArgs.tableName = args[i]
-			fmt.Println("addDataArgs.tableName: " + addDataArgs.tableName)
 			i++
 		}
 		if args[i] == "COLUMNS" {
@@ -110,7 +106,6 @@ var addDataCmd = &cobra.Command{
 				addDataArgs.columnNames = append(addDataArgs.columnNames, args[i])
 				i++
 			}
-			fmt.Printf("addDataArgs.columnNames: %v \n", addDataArgs.columnNames)
 		}
 		if args[i] == "VALUES" {
 			i++
@@ -118,7 +113,6 @@ var addDataCmd = &cobra.Command{
 				addDataArgs.valueNames = append(addDataArgs.valueNames, args[i])
 				i++
 			}
-			fmt.Printf("addDataArgs.valueNames: %v \n", addDataArgs.valueNames)
 		}
 		if args[i] == "PAY" {
 			i++
@@ -127,10 +121,7 @@ var addDataCmd = &cobra.Command{
 			if err != nil {
 				fmt.Errorf("Payment argument <string> not properly casted to an int")
 			}
-			fmt.Printf("addDataArgs.payment: %d \n", addDataArgs.payment)
 		}
-
-		fmt.Println(addDataArgs)
 	},
 
 	Run: func(cmd *cobra.Command, args []string) {
